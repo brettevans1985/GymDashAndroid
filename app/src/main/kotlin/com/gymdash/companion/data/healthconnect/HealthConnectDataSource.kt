@@ -9,6 +9,7 @@ import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.FloorsClimbedRecord
 import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
 import androidx.health.connect.client.records.HeightRecord
 import androidx.health.connect.client.records.OxygenSaturationRecord
 import androidx.health.connect.client.records.Record
@@ -44,6 +45,7 @@ class HealthConnectDataSource @Inject constructor(
             BodyFatRecord::class,
             RestingHeartRateRecord::class,
             OxygenSaturationRecord::class,
+            HeartRateVariabilityRmssdRecord::class,
         )
     }
 

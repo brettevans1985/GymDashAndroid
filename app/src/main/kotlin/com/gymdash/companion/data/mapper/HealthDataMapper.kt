@@ -5,6 +5,7 @@ import androidx.health.connect.client.records.BodyFatRecord
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.FloorsClimbedRecord
 import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
 import androidx.health.connect.client.records.OxygenSaturationRecord
 import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.RestingHeartRateRecord
@@ -142,6 +143,15 @@ class HealthDataMapper @Inject constructor() {
                         SpO2ReadingSync(
                             timestamp = record.time.toString(),
                             spO2Percentage = record.percentage.value
+                        )
+                    )
+                }
+                is HeartRateVariabilityRmssdRecord -> {
+                    val date = record.time.atZone(zone).toLocalDate()
+                    hrvReadings.add(
+                        HrvReadingSync(
+                            calendarDate = date.toString(),
+                            hrvRmssd = record.heartRateVariabilityMillis
                         )
                     )
                 }
