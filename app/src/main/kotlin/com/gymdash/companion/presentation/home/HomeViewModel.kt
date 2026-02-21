@@ -6,6 +6,7 @@ import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.BodyFatRecord
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
+import androidx.health.connect.client.records.FloorsClimbedRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeightRecord
 import androidx.health.connect.client.records.OxygenSaturationRecord
@@ -65,6 +66,7 @@ class HomeViewModel @Inject constructor(
             HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
             HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class),
             HealthPermission.getReadPermission(ExerciseSessionRecord::class),
+            HealthPermission.getReadPermission(FloorsClimbedRecord::class),
             HealthPermission.getReadPermission(WeightRecord::class),
             HealthPermission.getReadPermission(HeightRecord::class),
             HealthPermission.getReadPermission(BodyFatRecord::class),
