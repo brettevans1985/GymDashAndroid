@@ -3,6 +3,7 @@ package com.gymdash.companion.data.mapper
 import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.BodyFatRecord
 import androidx.health.connect.client.records.DistanceRecord
+import androidx.health.connect.client.records.FloorsClimbedRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.OxygenSaturationRecord
 import androidx.health.connect.client.records.Record
@@ -59,6 +60,7 @@ class HealthDataMapper @Inject constructor() {
         val dailyDistance = mutableMapOf<LocalDate, Double>()
         val dailyActiveCalories = mutableMapOf<LocalDate, Int>()
         val dailyTotalCalories = mutableMapOf<LocalDate, Int>()
+        val dailyFloorsClimbed = mutableMapOf<LocalDate, Int>()
 
         val zone = ZoneId.systemDefault()
 
@@ -131,6 +133,10 @@ class HealthDataMapper @Inject constructor() {
                     val date = record.startTime.atZone(zone).toLocalDate()
                     dailyTotalCalories[date] = (dailyTotalCalories[date] ?: 0) + record.energy.inKilocalories.toInt()
                 }
+                is FloorsClimbedRecord -> {
+                    val date = record.startTime.atZone(zone).toLocalDate()
+                    dailyFloorsClimbed[date] = (dailyFloorsClimbed[date] ?: 0) + record.floors.toInt()
+                }
                 is OxygenSaturationRecord -> {
                     spO2Readings.add(
                         SpO2ReadingSync(
@@ -160,14 +166,15 @@ class HealthDataMapper @Inject constructor() {
         }
 
         // Build daily activity summaries from accumulated data
-        val allDates = (dailySteps.keys + dailyDistance.keys + dailyActiveCalories.keys + dailyTotalCalories.keys).toSet()
+        val allDates = (dailySteps.keys + dailyDistance.keys + dailyActiveCalories.keys + dailyTotalCalories.keys + dailyFloorsClimbed.keys).toSet()
         val dailyActivitySummaries = allDates.map { date ->
             DailyActivitySummarySync(
                 calendarDate = date.toString(),
                 steps = dailySteps[date] ?: 0,
                 distanceMeters = dailyDistance[date] ?: 0.0,
                 activeCalories = dailyActiveCalories[date] ?: 0,
-                totalCalories = dailyTotalCalories[date] ?: 0
+                totalCalories = dailyTotalCalories[date] ?: 0,
+                floorsClimbed = dailyFloorsClimbed[date] ?: 0
             )
         }
 
