@@ -46,9 +46,21 @@ class HealthRepositoryImpl @Inject constructor(
             } else {
                 val changesToken = preferences.lastChangesToken.first()
                 val records = if (changesToken != null) {
-                    val result = healthConnectDataSource.getChanges(changesToken)
-                    preferences.setLastChangesToken(result.nextToken)
-                    result.records
+                    try {
+                        val result = healthConnectDataSource.getChanges(changesToken)
+                        preferences.setLastChangesToken(result.nextToken)
+                        result.records
+                    } catch (e: SecurityException) {
+                        // Stale changes token (e.g. record types changed) — reset and do a full read
+                        preferences.setLastChangesToken(null)
+                        val newToken = healthConnectDataSource.getChangesToken()
+                        preferences.setLastChangesToken(newToken)
+                        val now = Instant.now()
+                        val sevenDaysAgo = now.minusSeconds(7 * 24 * 60 * 60)
+                        HealthConnectDataSource.RECORD_TYPES.flatMap { recordType ->
+                            healthConnectDataSource.readRecords(recordType, sevenDaysAgo, now)
+                        }
+                    }
                 } else {
                     val newToken = healthConnectDataSource.getChangesToken()
                     preferences.setLastChangesToken(newToken)
