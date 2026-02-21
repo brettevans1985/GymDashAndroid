@@ -21,7 +21,11 @@ class HealthSyncWorkerTest {
 
     @Test
     fun `doWork returns success when sync succeeds`() = runTest {
-        coEvery { syncHealthDataUseCase() } returns SyncResult.Success(accepted = 10, rejected = 0)
+        coEvery { syncHealthDataUseCase() } returns SyncResult.Success(
+            recordsProcessed = 10,
+            recordsCreated = 8,
+            recordsUpdated = 2
+        )
 
         val result = performSync()
 

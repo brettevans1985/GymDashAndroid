@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.gymdash.companion.data.local.datastore.SyncPreferences
+import com.gymdash.companion.data.remote.AuthEventBus
 import com.gymdash.companion.data.remote.BaseUrlInterceptor
 import com.gymdash.companion.presentation.navigation.NavGraph
 import com.gymdash.companion.presentation.navigation.Routes
@@ -28,8 +29,10 @@ class MainActivity : ComponentActivity() {
 
     @Inject lateinit var preferences: SyncPreferences
     @Inject lateinit var baseUrlInterceptor: BaseUrlInterceptor
+    @Inject lateinit var authEventBus: AuthEventBus
 
     private var startDestination by mutableStateOf<String?>(null)
+    private var forceLoginNavigation by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,11 +45,21 @@ class MainActivity : ComponentActivity() {
             startDestination = if (token != null) Routes.HOME else Routes.LOGIN
         }
 
+        lifecycleScope.launch {
+            authEventBus.authExpired.collect {
+                forceLoginNavigation = true
+            }
+        }
+
         setContent {
             GymDashTheme {
                 val dest = startDestination
                 if (dest != null) {
-                    NavGraph(startDestination = dest)
+                    NavGraph(
+                        startDestination = dest,
+                        forceLoginNavigation = forceLoginNavigation,
+                        onForceLoginHandled = { forceLoginNavigation = false }
+                    )
                 } else {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()

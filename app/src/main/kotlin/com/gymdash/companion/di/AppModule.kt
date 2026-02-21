@@ -36,13 +36,16 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(baseUrlInterceptor: BaseUrlInterceptor): OkHttpClient = OkHttpClient.Builder()
+    fun provideOkHttpClient(baseUrlInterceptor: BaseUrlInterceptor, authInterceptor: com.gymdash.companion.data.remote.AuthInterceptor): OkHttpClient = OkHttpClient.Builder()
         .addInterceptor(baseUrlInterceptor)
-        .addInterceptor(
-            HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
+        .addInterceptor(authInterceptor)
+        .apply {
+            if (BuildConfig.DEBUG) {
+                addInterceptor(HttpLoggingInterceptor().apply {
+                    level = HttpLoggingInterceptor.Level.BODY
+                })
             }
-        )
+        }
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)

@@ -3,21 +3,27 @@ package com.gymdash.companion.presentation.home
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
+import androidx.health.connect.client.records.BloodGlucoseRecord
+import androidx.health.connect.client.records.BloodPressureRecord
 import androidx.health.connect.client.records.BodyFatRecord
+import androidx.health.connect.client.records.BodyTemperatureRecord
 import androidx.health.connect.client.records.DistanceRecord
-import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.FloorsClimbedRecord
 import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
 import androidx.health.connect.client.records.HeightRecord
 import androidx.health.connect.client.records.OxygenSaturationRecord
+import androidx.health.connect.client.records.RespiratoryRateRecord
 import androidx.health.connect.client.records.RestingHeartRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.records.Vo2MaxRecord
 import androidx.health.connect.client.records.WeightRecord
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gymdash.companion.data.local.datastore.SyncPreferences
+import com.gymdash.companion.domain.model.SyncErrorType
 import com.gymdash.companion.domain.model.SyncResult
 import com.gymdash.companion.domain.repository.HeartRateResult
 import com.gymdash.companion.domain.repository.HealthRepository
@@ -44,7 +50,8 @@ data class HomeUiState(
     val needsPermissionRequest: Boolean = false,
     val isLiveHeartRateActive: Boolean = false,
     val currentHeartRate: Int? = null,
-    val heartRateStatus: String? = null
+    val heartRateStatus: String? = null,
+    val isHealthConnectAvailable: Boolean = true
 )
 
 @HiltViewModel
@@ -52,7 +59,7 @@ class HomeViewModel @Inject constructor(
     private val syncHealthDataUseCase: SyncHealthDataUseCase,
     private val healthRepository: HealthRepository,
     private val preferences: SyncPreferences,
-    private val healthConnectClient: HealthConnectClient
+    private val healthConnectClient: HealthConnectClient?
 ) : ViewModel() {
 
     companion object {
@@ -65,13 +72,18 @@ class HomeViewModel @Inject constructor(
             HealthPermission.getReadPermission(DistanceRecord::class),
             HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
             HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class),
-            HealthPermission.getReadPermission(ExerciseSessionRecord::class),
             HealthPermission.getReadPermission(FloorsClimbedRecord::class),
             HealthPermission.getReadPermission(WeightRecord::class),
             HealthPermission.getReadPermission(HeightRecord::class),
             HealthPermission.getReadPermission(BodyFatRecord::class),
             HealthPermission.getReadPermission(RestingHeartRateRecord::class),
             HealthPermission.getReadPermission(OxygenSaturationRecord::class),
+            HealthPermission.getReadPermission(HeartRateVariabilityRmssdRecord::class),
+            HealthPermission.getReadPermission(RespiratoryRateRecord::class),
+            HealthPermission.getReadPermission(BloodPressureRecord::class),
+            HealthPermission.getReadPermission(BodyTemperatureRecord::class),
+            HealthPermission.getReadPermission(Vo2MaxRecord::class),
+            HealthPermission.getReadPermission(BloodGlucoseRecord::class),
         )
     }
 
@@ -82,8 +94,13 @@ class HomeViewModel @Inject constructor(
     private var heartRateJob: Job? = null
 
     init {
-        viewModelScope.launch {
-            checkPermissions()
+        val isAvailable = healthConnectClient != null
+        _uiState.value = _uiState.value.copy(isHealthConnectAvailable = isAvailable)
+
+        if (isAvailable) {
+            viewModelScope.launch {
+                checkPermissions()
+            }
         }
         viewModelScope.launch {
             preferences.lastSyncTimestamp.collect { timestamp ->
@@ -98,7 +115,8 @@ class HomeViewModel @Inject constructor(
     }
 
     private suspend fun checkPermissions() {
-        val granted = healthConnectClient.permissionController.getGrantedPermissions()
+        val client = healthConnectClient ?: return
+        val granted = client.permissionController.getGrantedPermissions()
         val hasAll = granted.containsAll(HEALTH_PERMISSIONS)
         _uiState.value = _uiState.value.copy(hasHealthPermissions = hasAll)
     }
@@ -112,6 +130,8 @@ class HomeViewModel @Inject constructor(
 
     fun syncNow() {
         viewModelScope.launch {
+            if (!_uiState.value.isHealthConnectAvailable) return@launch
+
             if (!_uiState.value.hasHealthPermissions) {
                 _uiState.value = _uiState.value.copy(needsPermissionRequest = true)
                 return@launch
@@ -128,7 +148,7 @@ class HomeViewModel @Inject constructor(
                 is SyncResult.Error -> {
                     _uiState.value = _uiState.value.copy(
                         isSyncing = false,
-                        lastSyncResult = result.message,
+                        lastSyncResult = userFriendlyMessage(result.type, result.message),
                         isError = true
                     )
                 }
@@ -136,10 +156,21 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    private fun userFriendlyMessage(type: SyncErrorType, fallback: String): String {
+        return when (type) {
+            SyncErrorType.NETWORK -> "No network connection. Please check your internet and try again."
+            SyncErrorType.AUTH_EXPIRED -> "Session expired. Please log in again."
+            SyncErrorType.SERVER -> "Server error. Please try again later."
+            SyncErrorType.HEALTH_CONNECT -> "Health Connect permission denied. Please grant permissions."
+            SyncErrorType.UNKNOWN -> fallback
+        }
+    }
+
     fun toggleLiveHeartRate() {
         if (_uiState.value.isLiveHeartRateActive) {
             stopHeartRatePolling()
         } else {
+            if (!_uiState.value.isHealthConnectAvailable) return
             if (!_uiState.value.hasHealthPermissions) {
                 _uiState.value = _uiState.value.copy(needsPermissionRequest = true)
                 return

@@ -1,6 +1,7 @@
 package com.gymdash.companion.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -17,8 +18,21 @@ object Routes {
 }
 
 @Composable
-fun NavGraph(startDestination: String = Routes.LOGIN) {
+fun NavGraph(
+    startDestination: String = Routes.LOGIN,
+    forceLoginNavigation: Boolean = false,
+    onForceLoginHandled: () -> Unit = {}
+) {
     val navController = rememberNavController()
+
+    LaunchedEffect(forceLoginNavigation) {
+        if (forceLoginNavigation) {
+            navController.navigate(Routes.LOGIN) {
+                popUpTo(0) { inclusive = true }
+            }
+            onForceLoginHandled()
+        }
+    }
 
     NavHost(navController = navController, startDestination = startDestination) {
         composable(Routes.LOGIN) {

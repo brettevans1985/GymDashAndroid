@@ -32,8 +32,10 @@ import kotlin.reflect.KClass
 
 @Singleton
 class HealthConnectDataSource @Inject constructor(
-    private val healthConnectClient: HealthConnectClient
+    private val healthConnectClient: HealthConnectClient?
 ) {
+    val isAvailable: Boolean get() = healthConnectClient != null
+
     companion object {
         val RECORD_TYPES: Set<KClass<out Record>> = setOf(
             StepsRecord::class,
@@ -57,29 +59,35 @@ class HealthConnectDataSource @Inject constructor(
         )
     }
 
+    private fun requireClient(): HealthConnectClient =
+        healthConnectClient ?: throw IllegalStateException("Health Connect is not available")
+
     suspend fun <T : Record> readRecords(
         recordType: KClass<T>,
         startTime: Instant,
         endTime: Instant
     ): List<T> {
+        val client = requireClient()
         val request = ReadRecordsRequest(
             recordType = recordType,
             timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
         )
-        return healthConnectClient.readRecords(request).records
+        return client.readRecords(request).records
     }
 
     suspend fun getChangesToken(): String {
+        val client = requireClient()
         val request = ChangesTokenRequest(RECORD_TYPES)
-        return healthConnectClient.getChangesToken(request)
+        return client.getChangesToken(request)
     }
 
     suspend fun getChanges(token: String): ChangesResult {
+        val client = requireClient()
         var nextToken = token
         val changes = mutableListOf<Change>()
 
         do {
-            val response = healthConnectClient.getChanges(nextToken)
+            val response = client.getChanges(nextToken)
             changes.addAll(response.changes)
             nextToken = response.nextChangesToken
         } while (response.hasMore)

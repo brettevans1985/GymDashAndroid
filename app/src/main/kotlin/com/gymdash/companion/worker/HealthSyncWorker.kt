@@ -40,6 +40,7 @@ class HealthSyncWorker @AssistedInject constructor(
         fun enqueue(context: Context, intervalMinutes: Long) {
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiresBatteryNotLow(true)
                 .build()
 
             val request = PeriodicWorkRequestBuilder<HealthSyncWorker>(

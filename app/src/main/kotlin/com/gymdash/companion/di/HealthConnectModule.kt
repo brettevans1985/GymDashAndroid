@@ -15,6 +15,10 @@ object HealthConnectModule {
 
     @Provides
     @Singleton
-    fun provideHealthConnectClient(@ApplicationContext context: Context): HealthConnectClient =
-        HealthConnectClient.getOrCreate(context)
+    fun provideHealthConnectClient(@ApplicationContext context: Context): HealthConnectClient? =
+        if (HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE) {
+            HealthConnectClient.getOrCreate(context)
+        } else {
+            null
+        }
 }
