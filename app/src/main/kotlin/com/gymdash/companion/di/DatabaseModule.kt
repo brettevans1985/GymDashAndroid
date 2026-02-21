@@ -22,7 +22,7 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "gymdash_db"
-        ).fallbackToDestructiveMigration()
+        ).fallbackToDestructiveMigration(dropAllTables = true)
             .build()
 
     @Provides
