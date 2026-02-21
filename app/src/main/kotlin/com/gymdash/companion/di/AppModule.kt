@@ -7,6 +7,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.gymdash.companion.BuildConfig
 import com.gymdash.companion.data.remote.BaseUrlInterceptor
 import com.gymdash.companion.data.remote.api.AuthApi
+import com.gymdash.companion.data.remote.api.FoodDiaryApi
 import com.gymdash.companion.data.remote.api.GymDashApi
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -66,6 +67,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideGymDashApi(retrofit: Retrofit): GymDashApi = retrofit.create(GymDashApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideFoodDiaryApi(retrofit: Retrofit): FoodDiaryApi = retrofit.create(FoodDiaryApi::class.java)
 
     @Provides
     @Singleton

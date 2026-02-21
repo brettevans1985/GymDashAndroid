@@ -1,8 +1,10 @@
 package com.gymdash.companion.di
 
 import com.gymdash.companion.data.repository.AuthRepositoryImpl
+import com.gymdash.companion.data.repository.FoodDiaryRepositoryImpl
 import com.gymdash.companion.data.repository.HealthRepositoryImpl
 import com.gymdash.companion.domain.repository.AuthRepository
+import com.gymdash.companion.domain.repository.FoodDiaryRepository
 import com.gymdash.companion.domain.repository.HealthRepository
 import dagger.Binds
 import dagger.Module
@@ -21,4 +23,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindHealthRepository(impl: HealthRepositoryImpl): HealthRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindFoodDiaryRepository(impl: FoodDiaryRepositoryImpl): FoodDiaryRepository
 }

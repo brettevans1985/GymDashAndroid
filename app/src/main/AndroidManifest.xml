@@ -25,6 +25,10 @@
     <!-- Network -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Camera for barcode scanning -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-permission android:name="android.permission.CAMERA" />
+
     <!-- Foreground service for sync -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />

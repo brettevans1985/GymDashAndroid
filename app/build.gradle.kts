@@ -105,6 +105,14 @@ dependencies {
     // Health Connect
     implementation(libs.health.connect)
 
+    // CameraX + ML Kit Barcode Scanning
+    implementation(libs.camerax.core)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
+    implementation(libs.mlkit.barcode)
+    implementation(libs.guava)
+
     // Coroutines
     implementation(libs.coroutines.core)
     implementation(libs.coroutines.android)

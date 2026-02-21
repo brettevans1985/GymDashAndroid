@@ -12,6 +12,8 @@ navigation = "2.9.7"
 work = "2.11.1"
 datastore = "1.2.0"
 health-connect = "1.1.0"
+camerax = "1.4.1"
+mlkit-barcode = "17.3.0"
 core-ktx = "1.17.0"
 lifecycle = "2.10.0"
 activity-compose = "1.12.4"
@@ -70,6 +72,14 @@ datastore-preferences = { group = "androidx.datastore", name = "datastore-prefer
 
 # Health Connect
 health-connect = { group = "androidx.health.connect", name = "connect-client", version.ref = "health-connect" }
+
+# CameraX + ML Kit
+camerax-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
+camerax-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+camerax-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+camerax-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+mlkit-barcode = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkit-barcode" }
+guava = { group = "com.google.guava", name = "guava", version = "33.4.0-android" }
 
 # Coroutines
 coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
