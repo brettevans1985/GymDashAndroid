@@ -23,9 +23,13 @@ class SyncPreferences @Inject constructor(
         val LAST_SYNC_TIMESTAMP = longPreferencesKey("last_sync_timestamp")
         val LAST_CHANGES_TOKEN = stringPreferencesKey("last_changes_token")
         val USER_ID = stringPreferencesKey("user_id")
+        val LAST_USERNAME = stringPreferencesKey("last_username")
+        val LAST_DEV_URL = stringPreferencesKey("last_dev_url")
     }
 
     val authToken: Flow<String?> = dataStore.data.map { it[AUTH_TOKEN] }
+    val lastUsername: Flow<String?> = dataStore.data.map { it[LAST_USERNAME] }
+    val lastDevUrl: Flow<String?> = dataStore.data.map { it[LAST_DEV_URL] }
     val serverUrl: Flow<String> = dataStore.data.map { it[SERVER_URL] ?: com.gymdash.companion.BuildConfig.DEFAULT_SERVER_URL }
     val autoSyncEnabled: Flow<Boolean> = dataStore.data.map { it[AUTO_SYNC_ENABLED] ?: true }
     val syncIntervalMinutes: Flow<Long> = dataStore.data.map { it[SYNC_INTERVAL_MINUTES] ?: 60L }
@@ -64,6 +68,14 @@ class SyncPreferences @Inject constructor(
 
     suspend fun setUserId(userId: String) {
         dataStore.edit { it[USER_ID] = userId }
+    }
+
+    suspend fun setLastUsername(username: String) {
+        dataStore.edit { it[LAST_USERNAME] = username }
+    }
+
+    suspend fun setLastDevUrl(url: String) {
+        dataStore.edit { it[LAST_DEV_URL] = url }
     }
 
     suspend fun clearAll() {

@@ -49,7 +49,7 @@ class MockHealthDataGeneratorTest {
         val data = generator.generate()
 
         data.spO2Readings.forEach { reading ->
-            assertTrue("SpO2 ${reading.spO2Percentage} out of range", reading.spO2Percentage in 90.0..100.0)
+            assertTrue("SpO2 ${reading.spO2Percentage} out of range", reading.spO2Percentage in 90..100)
         }
     }
 

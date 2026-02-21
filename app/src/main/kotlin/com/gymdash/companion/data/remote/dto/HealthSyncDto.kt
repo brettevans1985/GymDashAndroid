@@ -53,7 +53,7 @@ data class DailyActivitySummarySync(
 @JsonClass(generateAdapter = true)
 data class SpO2ReadingSync(
     val timestamp: String,
-    val spO2Percentage: Double
+    val spO2Percentage: Int
 )
 
 @JsonClass(generateAdapter = true)

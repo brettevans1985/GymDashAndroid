@@ -90,7 +90,7 @@ class MockHealthDataGenerator @Inject constructor() {
         return listOf(
             SpO2ReadingSync(
                 timestamp = now.minusSeconds(3600).toString(),
-                spO2Percentage = Random.nextDouble(95.0, 100.0)
+                spO2Percentage = Random.nextInt(95, 100)
             )
         )
     }
@@ -99,7 +99,7 @@ class MockHealthDataGenerator @Inject constructor() {
         return listOf(
             HrvReadingSync(
                 calendarDate = today.toString(),
-                hrvRmssd = Random.nextDouble(20.0, 80.0)
+                hrvRmssd = "%.2f".format(Random.nextDouble(20.0, 80.0)).toDouble()
             )
         )
     }

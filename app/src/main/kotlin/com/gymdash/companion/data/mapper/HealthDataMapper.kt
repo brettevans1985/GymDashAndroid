@@ -178,7 +178,7 @@ class HealthDataMapper @Inject constructor() {
                     spO2Readings.add(
                         SpO2ReadingSync(
                             timestamp = record.time.toString(),
-                            spO2Percentage = record.percentage.value
+                            spO2Percentage = record.percentage.value.toInt()
                         )
                     )
                 }

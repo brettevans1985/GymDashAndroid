@@ -79,12 +79,22 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = uiState.selectedServer.url,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth()
-            )
+            if (uiState.selectedServer == ServerEnvironment.DEVELOPMENT) {
+                OutlinedTextField(
+                    value = uiState.customDevUrl,
+                    onValueChange = viewModel::onDevUrlChanged,
+                    label = { Text(stringResource(R.string.login_server_url_label)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                Text(
+                    text = uiState.selectedServer.url,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 

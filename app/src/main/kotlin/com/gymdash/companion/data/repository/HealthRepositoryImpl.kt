@@ -39,7 +39,7 @@ class HealthRepositoryImpl @Inject constructor(
 
         return try {
             val serverUrl = preferences.serverUrl.first()
-            val useMock = BuildConfig.DEBUG && serverUrl == BuildConfig.DEFAULT_SERVER_URL
+            val useMock = BuildConfig.DEBUG && serverUrl != BuildConfig.PRODUCTION_SERVER_URL
 
             val mappedData = if (useMock) {
                 mockHealthDataGenerator.generate()

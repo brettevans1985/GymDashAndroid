@@ -10,6 +10,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -25,7 +26,8 @@ data class LoginUiState(
     val error: String? = null,
     val isLoggedIn: Boolean = false,
     val selectedServer: ServerEnvironment =
-        if (BuildConfig.DEBUG) ServerEnvironment.DEVELOPMENT else ServerEnvironment.PRODUCTION
+        if (BuildConfig.DEBUG) ServerEnvironment.DEVELOPMENT else ServerEnvironment.PRODUCTION,
+    val customDevUrl: String = BuildConfig.DEFAULT_SERVER_URL
 )
 
 @HiltViewModel
@@ -38,6 +40,17 @@ class LoginViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
+    init {
+        viewModelScope.launch {
+            val savedUsername = preferences.lastUsername.first()
+            val savedDevUrl = preferences.lastDevUrl.first()
+            _uiState.value = _uiState.value.copy(
+                username = savedUsername ?: _uiState.value.username,
+                customDevUrl = savedDevUrl ?: _uiState.value.customDevUrl
+            )
+        }
+    }
+
     fun onUsernameChanged(username: String) {
         _uiState.value = _uiState.value.copy(username = username, error = null)
     }
@@ -48,7 +61,12 @@ class LoginViewModel @Inject constructor(
 
     fun onServerChanged(server: ServerEnvironment) {
         _uiState.value = _uiState.value.copy(selectedServer = server, error = null)
-        baseUrlInterceptor.baseUrl = server.url
+        val url = if (server == ServerEnvironment.DEVELOPMENT) _uiState.value.customDevUrl else server.url
+        baseUrlInterceptor.baseUrl = url
+    }
+
+    fun onDevUrlChanged(url: String) {
+        _uiState.value = _uiState.value.copy(customDevUrl = url, error = null)
     }
 
     fun login() {
@@ -58,13 +76,16 @@ class LoginViewModel @Inject constructor(
             return
         }
 
-        baseUrlInterceptor.baseUrl = state.selectedServer.url
+        val serverUrl = if (state.selectedServer == ServerEnvironment.DEVELOPMENT) state.customDevUrl else state.selectedServer.url
+        baseUrlInterceptor.baseUrl = serverUrl
 
         viewModelScope.launch {
             _uiState.value = state.copy(isLoading = true, error = null)
             loginUseCase(state.username, state.password)
                 .onSuccess {
-                    preferences.setServerUrl(state.selectedServer.url)
+                    preferences.setServerUrl(serverUrl)
+                    preferences.setLastUsername(state.username)
+                    preferences.setLastDevUrl(state.customDevUrl)
                     _uiState.value = _uiState.value.copy(isLoading = false, isLoggedIn = true)
                 }
                 .onFailure { e ->
