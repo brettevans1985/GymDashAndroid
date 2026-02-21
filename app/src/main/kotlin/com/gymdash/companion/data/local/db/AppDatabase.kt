@@ -7,7 +7,7 @@ import com.gymdash.companion.data.local.db.dao.SyncLogEntity
 
 @Database(
     entities = [SyncLogEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

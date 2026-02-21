@@ -104,7 +104,7 @@ private fun SyncLogItem(entry: SyncLogEntity) {
                 )
             } else {
                 Text(
-                    text = "${entry.recordsAccepted} accepted, ${entry.recordsRejected} rejected",
+                    text = "${entry.recordsProcessed} processed, ${entry.recordsCreated} created, ${entry.recordsUpdated} updated",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }

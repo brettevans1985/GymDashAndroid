@@ -2,13 +2,16 @@ package com.gymdash.companion.presentation.login
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -52,10 +55,43 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            Text(
+                text = stringResource(R.string.login_server_label),
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                ServerEnvironment.entries.forEach { server ->
+                    FilterChip(
+                        selected = uiState.selectedServer == server,
+                        onClick = { viewModel.onServerChanged(server) },
+                        label = { Text(server.label) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (server != ServerEnvironment.entries.last()) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = uiState.selectedServer.url,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             OutlinedTextField(
-                value = uiState.email,
-                onValueChange = viewModel::onEmailChanged,
-                label = { Text(stringResource(R.string.login_email_label)) },
+                value = uiState.username,
+                onValueChange = viewModel::onUsernameChanged,
+                label = { Text(stringResource(R.string.login_username_label)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )

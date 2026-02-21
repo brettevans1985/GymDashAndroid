@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.gymdash.companion.BuildConfig
+import com.gymdash.companion.data.remote.BaseUrlInterceptor
 import com.gymdash.companion.data.remote.api.AuthApi
 import com.gymdash.companion.data.remote.api.GymDashApi
 import com.squareup.moshi.Moshi
@@ -34,7 +36,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
+    fun provideOkHttpClient(baseUrlInterceptor: BaseUrlInterceptor): OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor(baseUrlInterceptor)
         .addInterceptor(
             HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.BODY
@@ -48,7 +51,7 @@ object AppModule {
     @Provides
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient, moshi: Moshi): Retrofit = Retrofit.Builder()
-        .baseUrl("https://localhost:5001/api/")
+        .baseUrl("${BuildConfig.DEFAULT_SERVER_URL}/api/")
         .client(okHttpClient)
         .addConverterFactory(MoshiConverterFactory.create(moshi))
         .build()

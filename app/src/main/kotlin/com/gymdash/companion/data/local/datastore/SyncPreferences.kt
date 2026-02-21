@@ -26,7 +26,7 @@ class SyncPreferences @Inject constructor(
     }
 
     val authToken: Flow<String?> = dataStore.data.map { it[AUTH_TOKEN] }
-    val serverUrl: Flow<String> = dataStore.data.map { it[SERVER_URL] ?: "https://localhost:5001" }
+    val serverUrl: Flow<String> = dataStore.data.map { it[SERVER_URL] ?: com.gymdash.companion.BuildConfig.DEFAULT_SERVER_URL }
     val autoSyncEnabled: Flow<Boolean> = dataStore.data.map { it[AUTO_SYNC_ENABLED] ?: true }
     val syncIntervalMinutes: Flow<Long> = dataStore.data.map { it[SYNC_INTERVAL_MINUTES] ?: 60L }
     val lastSyncTimestamp: Flow<Long> = dataStore.data.map { it[LAST_SYNC_TIMESTAMP] ?: 0L }

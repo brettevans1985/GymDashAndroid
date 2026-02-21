@@ -1,14 +1,17 @@
 package com.gymdash.companion.data.repository
 
 import android.os.Build
+import androidx.health.connect.client.records.HeartRateRecord
 import com.gymdash.companion.data.healthconnect.HealthConnectDataSource
 import com.gymdash.companion.data.local.datastore.SyncPreferences
 import com.gymdash.companion.data.local.db.dao.SyncLogDao
 import com.gymdash.companion.data.local.db.dao.SyncLogEntity
 import com.gymdash.companion.data.mapper.HealthDataMapper
 import com.gymdash.companion.data.remote.api.GymDashApi
+import com.gymdash.companion.data.remote.dto.HeartRateReadingSync
 import com.gymdash.companion.data.remote.dto.HealthSyncRequest
 import com.gymdash.companion.domain.model.SyncResult
+import com.gymdash.companion.domain.repository.HeartRateResult
 import com.gymdash.companion.domain.repository.HealthRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -44,15 +47,19 @@ class HealthRepositoryImpl @Inject constructor(
                 }
             }
 
-            val metrics = mapper.mapRecords(records)
-            if (metrics.isEmpty()) {
-                return SyncResult.Success(accepted = 0, rejected = 0)
+            val mappedData = mapper.mapRecords(records)
+            if (mappedData.isEmpty) {
+                return SyncResult.Success(recordsProcessed = 0, recordsCreated = 0, recordsUpdated = 0)
             }
 
             val request = HealthSyncRequest(
-                deviceId = Build.MODEL,
-                syncTimestamp = Instant.now().toString(),
-                metrics = metrics
+                deviceName = Build.MODEL,
+                heartRateReadings = mappedData.heartRateReadings,
+                sleepSessions = mappedData.sleepSessions,
+                dailyActivitySummaries = mappedData.dailyActivitySummaries,
+                spO2Readings = mappedData.spO2Readings,
+                hrvReadings = mappedData.hrvReadings,
+                weightReadings = mappedData.weightReadings
             )
 
             val response = gymDashApi.syncHealthData(token, request)
@@ -60,31 +67,73 @@ class HealthRepositoryImpl @Inject constructor(
 
             syncLogDao.insert(
                 SyncLogEntity(
-                    syncId = response.syncId,
                     timestamp = now,
-                    recordsAccepted = response.recordsAccepted,
-                    recordsRejected = response.recordsRejected,
+                    recordsProcessed = response.recordsProcessed,
+                    recordsCreated = response.recordsCreated,
+                    recordsUpdated = response.recordsUpdated,
                     status = "success"
                 )
             )
             preferences.setLastSyncTimestamp(now)
 
             SyncResult.Success(
-                accepted = response.recordsAccepted,
-                rejected = response.recordsRejected
+                recordsProcessed = response.recordsProcessed,
+                recordsCreated = response.recordsCreated,
+                recordsUpdated = response.recordsUpdated
             )
         } catch (e: Exception) {
             syncLogDao.insert(
                 SyncLogEntity(
-                    syncId = "",
                     timestamp = System.currentTimeMillis(),
-                    recordsAccepted = 0,
-                    recordsRejected = 0,
+                    recordsProcessed = 0,
+                    recordsCreated = 0,
+                    recordsUpdated = 0,
                     status = "error",
                     errorMessage = e.message
                 )
             )
             SyncResult.Error(e.message ?: "Unknown error")
+        }
+    }
+
+    override suspend fun sendLatestHeartRate(): HeartRateResult {
+        val token = preferences.authToken.first()
+            ?: return HeartRateResult.Error("Not authenticated")
+
+        return try {
+            val now = Instant.now()
+            val windowStart = now.minusSeconds(30)
+
+            val records = healthConnectDataSource.readRecords(
+                HeartRateRecord::class, windowStart, now
+            )
+
+            if (records.isEmpty()) return HeartRateResult.NoData
+
+            val latestSample = records
+                .flatMap { it.samples }
+                .maxByOrNull { it.time }
+                ?: return HeartRateResult.NoData
+
+            val reading = HeartRateReadingSync(
+                timestamp = latestSample.time.toString(),
+                beatsPerMinute = latestSample.beatsPerMinute.toInt()
+            )
+
+            gymDashApi.syncHealthData(
+                token,
+                HealthSyncRequest(
+                    deviceName = Build.MODEL,
+                    heartRateReadings = listOf(reading)
+                )
+            )
+
+            HeartRateResult.Success(
+                bpm = reading.beatsPerMinute,
+                timestamp = reading.timestamp
+            )
+        } catch (e: Exception) {
+            HeartRateResult.Error(e.message ?: "Unknown error")
         }
     }
 

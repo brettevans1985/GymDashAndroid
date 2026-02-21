@@ -10,10 +10,10 @@ import kotlinx.coroutines.flow.Flow
 @Entity(tableName = "sync_log")
 data class SyncLogEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val syncId: String,
     val timestamp: Long,
-    val recordsAccepted: Int,
-    val recordsRejected: Int,
+    val recordsProcessed: Int,
+    val recordsCreated: Int,
+    val recordsUpdated: Int,
     val status: String,
     val errorMessage: String? = null
 )

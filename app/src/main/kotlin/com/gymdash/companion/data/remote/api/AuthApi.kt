@@ -4,15 +4,20 @@ import retrofit2.http.Body
 import retrofit2.http.POST
 
 data class LoginRequest(
-    val email: String,
+    val username: String,
     val password: String,
     val rememberMe: Boolean = false
 )
 
+data class LoginUserDto(
+    val id: Int,
+    val username: String,
+    val email: String
+)
+
 data class LoginResponse(
-    val token: String,
-    val expiresAt: String,
-    val userId: Int
+    val accessToken: String,
+    val user: LoginUserDto
 )
 
 interface AuthApi {

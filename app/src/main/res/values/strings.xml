@@ -2,7 +2,8 @@
 <resources>
     <string name="app_name">GymDash</string>
     <string name="login_title">Sign In</string>
-    <string name="login_email_label">Email</string>
+    <string name="login_server_label">Server</string>
+    <string name="login_username_label">Username</string>
     <string name="login_password_label">Password</string>
     <string name="login_button">Sign In</string>
     <string name="home_title">Dashboard</string>

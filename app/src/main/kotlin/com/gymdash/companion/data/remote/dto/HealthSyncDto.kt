@@ -4,69 +4,71 @@ import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = true)
 data class HealthSyncRequest(
-    val deviceId: String,
-    val syncTimestamp: String,
-    val metrics: List<HealthMetricDto>
+    val deviceName: String,
+    val heartRateReadings: List<HeartRateReadingSync> = emptyList(),
+    val sleepSessions: List<SleepSessionSync> = emptyList(),
+    val dailyActivitySummaries: List<DailyActivitySummarySync> = emptyList(),
+    val spO2Readings: List<SpO2ReadingSync> = emptyList(),
+    val hrvReadings: List<HrvReadingSync> = emptyList(),
+    val weightReadings: List<WeightReadingSync> = emptyList()
 )
 
 @JsonClass(generateAdapter = true)
-data class HealthMetricDto(
-    val metricType: String,
-    val value: Double,
-    val unit: String,
-    val recordedAt: String,
-    val source: String,
-    val metadata: Map<String, String>? = null
+data class HeartRateReadingSync(
+    val timestamp: String,
+    val beatsPerMinute: Int,
+    val context: String = "Unknown"
+)
+
+@JsonClass(generateAdapter = true)
+data class SleepSessionSync(
+    val calendarDate: String,
+    val startTime: String,
+    val endTime: String,
+    val durationSeconds: Int,
+    val deepSleepSeconds: Int = 0,
+    val lightSleepSeconds: Int = 0,
+    val remSleepSeconds: Int = 0,
+    val awakeSeconds: Int = 0,
+    val sleepScore: Int? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class DailyActivitySummarySync(
+    val calendarDate: String,
+    val steps: Int = 0,
+    val distanceMeters: Double = 0.0,
+    val activeCalories: Int = 0,
+    val totalCalories: Int = 0,
+    val floorsClimbed: Int = 0,
+    val activeTimeSeconds: Int = 0
+)
+
+@JsonClass(generateAdapter = true)
+data class SpO2ReadingSync(
+    val timestamp: String,
+    val spO2Percentage: Double
+)
+
+@JsonClass(generateAdapter = true)
+data class HrvReadingSync(
+    val calendarDate: String,
+    val hrvRmssd: Double
+)
+
+@JsonClass(generateAdapter = true)
+data class WeightReadingSync(
+    val measuredAt: String,
+    val weightKg: Double,
+    val bodyFatPercent: Double? = null,
+    val bmi: Double? = null
 )
 
 @JsonClass(generateAdapter = true)
 data class HealthSyncResponse(
-    val syncId: String,
-    val recordsAccepted: Int,
-    val recordsRejected: Int,
-    val serverTimestamp: String
-)
-
-@JsonClass(generateAdapter = true)
-data class StepsDto(
-    val count: Long,
-    val startTime: String,
-    val endTime: String
-)
-
-@JsonClass(generateAdapter = true)
-data class HeartRateDto(
-    val bpm: Long,
-    val recordedAt: String
-)
-
-@JsonClass(generateAdapter = true)
-data class SleepSessionDto(
-    val startTime: String,
-    val endTime: String,
-    val stages: List<SleepStageDto>? = null
-)
-
-@JsonClass(generateAdapter = true)
-data class SleepStageDto(
-    val stage: String,
-    val startTime: String,
-    val endTime: String
-)
-
-@JsonClass(generateAdapter = true)
-data class ExerciseSessionDto(
-    val exerciseType: String,
-    val startTime: String,
-    val endTime: String,
-    val calories: Double? = null,
-    val distance: Double? = null
-)
-
-@JsonClass(generateAdapter = true)
-data class BodyMeasurementDto(
-    val measurementType: String,
-    val value: Double,
-    val unit: String,
-    val recordedAt: String
+    val recordsProcessed: Int,
+    val recordsCreated: Int,
+    val recordsUpdated: Int,
+    val dataTypesReceived: List<String>,
+    val syncedAt: String
 )

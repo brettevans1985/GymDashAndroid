@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.gymdash.companion"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.gymdash.companion"
@@ -21,12 +21,18 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "DEFAULT_SERVER_URL", "\"http://192.168.1.48:5000\"")
+            buildConfigField("String", "PRODUCTION_SERVER_URL", "\"http://192.168.1.233:8080\"")
+        }
         release {
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            buildConfigField("String", "DEFAULT_SERVER_URL", "\"http://192.168.1.233:8080\"")
+            buildConfigField("String", "PRODUCTION_SERVER_URL", "\"http://192.168.1.233:8080\"")
         }
     }
 
@@ -41,6 +47,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -55,6 +62,7 @@ dependencies {
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.extended)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
 

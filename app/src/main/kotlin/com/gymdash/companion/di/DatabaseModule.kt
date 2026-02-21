@@ -22,7 +22,8 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "gymdash_db"
-        ).build()
+        ).fallbackToDestructiveMigration()
+            .build()
 
     @Provides
     fun provideSyncLogDao(database: AppDatabase): SyncLogDao = database.syncLogDao()
