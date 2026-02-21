@@ -83,19 +83,27 @@ fun HomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (!uiState.hasHealthPermissions) {
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        permissionLauncher.launch(HomeViewModel.HEALTH_PERMISSIONS)
+                    }
+                ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
                             text = "Health Connect permissions required",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.error
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Tap Sync Now to grant permissions",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                permissionLauncher.launch(HomeViewModel.HEALTH_PERMISSIONS)
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Grant Permissions")
+                        }
                     }
                 }
             }
