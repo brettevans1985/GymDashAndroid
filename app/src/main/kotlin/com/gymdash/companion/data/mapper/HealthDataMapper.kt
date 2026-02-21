@@ -1,25 +1,37 @@
 package com.gymdash.companion.data.mapper
 
 import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
+import androidx.health.connect.client.records.BloodGlucoseRecord
+import androidx.health.connect.client.records.BloodPressureRecord
 import androidx.health.connect.client.records.BodyFatRecord
+import androidx.health.connect.client.records.BodyTemperatureRecord
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.FloorsClimbedRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
+import androidx.health.connect.client.records.HeightRecord
 import androidx.health.connect.client.records.OxygenSaturationRecord
 import androidx.health.connect.client.records.Record
+import androidx.health.connect.client.records.RespiratoryRateRecord
 import androidx.health.connect.client.records.RestingHeartRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.records.Vo2MaxRecord
 import androidx.health.connect.client.records.WeightRecord
+import com.gymdash.companion.data.remote.dto.BloodGlucoseReadingSync
+import com.gymdash.companion.data.remote.dto.BloodPressureReadingSync
+import com.gymdash.companion.data.remote.dto.BodyTemperatureReadingSync
 import com.gymdash.companion.data.remote.dto.DailyActivitySummarySync
 import com.gymdash.companion.data.remote.dto.HeartRateReadingSync
 import com.gymdash.companion.data.remote.dto.HrvReadingSync
+import com.gymdash.companion.data.remote.dto.RespiratoryRateReadingSync
 import com.gymdash.companion.data.remote.dto.SleepSessionSync
 import com.gymdash.companion.data.remote.dto.SpO2ReadingSync
+import com.gymdash.companion.data.remote.dto.Vo2MaxReadingSync
 import com.gymdash.companion.data.remote.dto.WeightReadingSync
 import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
@@ -30,21 +42,37 @@ data class MappedHealthData(
     val dailyActivitySummaries: List<DailyActivitySummarySync>,
     val spO2Readings: List<SpO2ReadingSync>,
     val hrvReadings: List<HrvReadingSync>,
-    val weightReadings: List<WeightReadingSync>
+    val weightReadings: List<WeightReadingSync>,
+    val respiratoryRateReadings: List<RespiratoryRateReadingSync>,
+    val bloodPressureReadings: List<BloodPressureReadingSync>,
+    val bodyTemperatureReadings: List<BodyTemperatureReadingSync>,
+    val vo2MaxReadings: List<Vo2MaxReadingSync>,
+    val bloodGlucoseReadings: List<BloodGlucoseReadingSync>,
+    val heightCm: Double? = null
 ) {
     val isEmpty: Boolean get() = heartRateReadings.isEmpty() &&
             sleepSessions.isEmpty() &&
             dailyActivitySummaries.isEmpty() &&
             spO2Readings.isEmpty() &&
             hrvReadings.isEmpty() &&
-            weightReadings.isEmpty()
+            weightReadings.isEmpty() &&
+            respiratoryRateReadings.isEmpty() &&
+            bloodPressureReadings.isEmpty() &&
+            bodyTemperatureReadings.isEmpty() &&
+            vo2MaxReadings.isEmpty() &&
+            bloodGlucoseReadings.isEmpty()
 
     val totalRecords: Int get() = heartRateReadings.size +
             sleepSessions.size +
             dailyActivitySummaries.size +
             spO2Readings.size +
             hrvReadings.size +
-            weightReadings.size
+            weightReadings.size +
+            respiratoryRateReadings.size +
+            bloodPressureReadings.size +
+            bodyTemperatureReadings.size +
+            vo2MaxReadings.size +
+            bloodGlucoseReadings.size
 }
 
 class HealthDataMapper @Inject constructor() {
@@ -55,6 +83,11 @@ class HealthDataMapper @Inject constructor() {
         val spO2Readings = mutableListOf<SpO2ReadingSync>()
         val hrvReadings = mutableListOf<HrvReadingSync>()
         val weightReadings = mutableListOf<WeightReadingSync>()
+        val respiratoryRateReadings = mutableListOf<RespiratoryRateReadingSync>()
+        val bloodPressureReadings = mutableListOf<BloodPressureReadingSync>()
+        val bodyTemperatureReadings = mutableListOf<BodyTemperatureReadingSync>()
+        val vo2MaxReadings = mutableListOf<Vo2MaxReadingSync>()
+        val bloodGlucoseReadings = mutableListOf<BloodGlucoseReadingSync>()
 
         // Accumulators for daily activity summaries (grouped by date)
         val dailySteps = mutableMapOf<LocalDate, Int>()
@@ -64,6 +97,9 @@ class HealthDataMapper @Inject constructor() {
         val dailyFloorsClimbed = mutableMapOf<LocalDate, Int>()
 
         val zone = ZoneId.systemDefault()
+
+        var latestHeightCm: Double? = null
+        var latestHeightTime: Instant? = null
 
         for (record in records) {
             when (record) {
@@ -155,6 +191,48 @@ class HealthDataMapper @Inject constructor() {
                         )
                     )
                 }
+                is RespiratoryRateRecord -> {
+                    respiratoryRateReadings.add(
+                        RespiratoryRateReadingSync(
+                            timestamp = record.time.toString(),
+                            breathsPerMinute = record.rate
+                        )
+                    )
+                }
+                is BloodPressureRecord -> {
+                    bloodPressureReadings.add(
+                        BloodPressureReadingSync(
+                            timestamp = record.time.toString(),
+                            systolicMmHg = record.systolic.inMillimetersOfMercury.toInt(),
+                            diastolicMmHg = record.diastolic.inMillimetersOfMercury.toInt()
+                        )
+                    )
+                }
+                is BodyTemperatureRecord -> {
+                    bodyTemperatureReadings.add(
+                        BodyTemperatureReadingSync(
+                            timestamp = record.time.toString(),
+                            temperatureCelsius = record.temperature.inCelsius
+                        )
+                    )
+                }
+                is Vo2MaxRecord -> {
+                    val date = record.time.atZone(zone).toLocalDate()
+                    vo2MaxReadings.add(
+                        Vo2MaxReadingSync(
+                            calendarDate = date.toString(),
+                            vo2MaxMlKgMin = record.vo2MillilitersPerMinuteKilogram
+                        )
+                    )
+                }
+                is BloodGlucoseRecord -> {
+                    bloodGlucoseReadings.add(
+                        BloodGlucoseReadingSync(
+                            timestamp = record.time.toString(),
+                            valueMmolL = record.level.inMillimolesPerLiter
+                        )
+                    )
+                }
                 is WeightRecord -> {
                     weightReadings.add(
                         WeightReadingSync(
@@ -170,6 +248,12 @@ class HealthDataMapper @Inject constructor() {
                     if (existing != null) {
                         val index = weightReadings.indexOf(existing)
                         weightReadings[index] = existing.copy(bodyFatPercent = record.percentage.value)
+                    }
+                }
+                is HeightRecord -> {
+                    if (latestHeightTime == null || record.time > latestHeightTime) {
+                        latestHeightTime = record.time
+                        latestHeightCm = record.height.inCentimeters
                     }
                 }
             }
@@ -194,7 +278,13 @@ class HealthDataMapper @Inject constructor() {
             dailyActivitySummaries = dailyActivitySummaries,
             spO2Readings = spO2Readings,
             hrvReadings = hrvReadings,
-            weightReadings = weightReadings
+            weightReadings = weightReadings,
+            respiratoryRateReadings = respiratoryRateReadings,
+            bloodPressureReadings = bloodPressureReadings,
+            bodyTemperatureReadings = bodyTemperatureReadings,
+            vo2MaxReadings = vo2MaxReadings,
+            bloodGlucoseReadings = bloodGlucoseReadings,
+            heightCm = latestHeightCm
         )
     }
 }

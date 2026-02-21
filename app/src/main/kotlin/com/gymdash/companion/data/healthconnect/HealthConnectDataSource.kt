@@ -4,19 +4,23 @@ import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.changes.Change
 import androidx.health.connect.client.changes.UpsertionChange
 import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
+import androidx.health.connect.client.records.BloodGlucoseRecord
+import androidx.health.connect.client.records.BloodPressureRecord
 import androidx.health.connect.client.records.BodyFatRecord
+import androidx.health.connect.client.records.BodyTemperatureRecord
 import androidx.health.connect.client.records.DistanceRecord
-import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.FloorsClimbedRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
 import androidx.health.connect.client.records.HeightRecord
 import androidx.health.connect.client.records.OxygenSaturationRecord
 import androidx.health.connect.client.records.Record
+import androidx.health.connect.client.records.RespiratoryRateRecord
 import androidx.health.connect.client.records.RestingHeartRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
+import androidx.health.connect.client.records.Vo2MaxRecord
 import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.request.ChangesTokenRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
@@ -38,7 +42,6 @@ class HealthConnectDataSource @Inject constructor(
             DistanceRecord::class,
             ActiveCaloriesBurnedRecord::class,
             TotalCaloriesBurnedRecord::class,
-            ExerciseSessionRecord::class,
             FloorsClimbedRecord::class,
             WeightRecord::class,
             HeightRecord::class,
@@ -46,6 +49,11 @@ class HealthConnectDataSource @Inject constructor(
             RestingHeartRateRecord::class,
             OxygenSaturationRecord::class,
             HeartRateVariabilityRmssdRecord::class,
+            RespiratoryRateRecord::class,
+            BloodPressureRecord::class,
+            BodyTemperatureRecord::class,
+            Vo2MaxRecord::class,
+            BloodGlucoseRecord::class,
         )
     }
 

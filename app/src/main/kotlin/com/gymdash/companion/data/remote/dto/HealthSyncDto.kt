@@ -10,7 +10,13 @@ data class HealthSyncRequest(
     val dailyActivitySummaries: List<DailyActivitySummarySync> = emptyList(),
     val spO2Readings: List<SpO2ReadingSync> = emptyList(),
     val hrvReadings: List<HrvReadingSync> = emptyList(),
-    val weightReadings: List<WeightReadingSync> = emptyList()
+    val weightReadings: List<WeightReadingSync> = emptyList(),
+    val respiratoryRateReadings: List<RespiratoryRateReadingSync> = emptyList(),
+    val bloodPressureReadings: List<BloodPressureReadingSync> = emptyList(),
+    val bodyTemperatureReadings: List<BodyTemperatureReadingSync> = emptyList(),
+    val vo2MaxReadings: List<Vo2MaxReadingSync> = emptyList(),
+    val bloodGlucoseReadings: List<BloodGlucoseReadingSync> = emptyList(),
+    val heightCm: Double? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -62,6 +68,37 @@ data class WeightReadingSync(
     val weightKg: Double,
     val bodyFatPercent: Double? = null,
     val bmi: Double? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class RespiratoryRateReadingSync(
+    val timestamp: String,
+    val breathsPerMinute: Double
+)
+
+@JsonClass(generateAdapter = true)
+data class BloodPressureReadingSync(
+    val timestamp: String,
+    val systolicMmHg: Int,
+    val diastolicMmHg: Int
+)
+
+@JsonClass(generateAdapter = true)
+data class BodyTemperatureReadingSync(
+    val timestamp: String,
+    val temperatureCelsius: Double
+)
+
+@JsonClass(generateAdapter = true)
+data class Vo2MaxReadingSync(
+    val calendarDate: String,
+    val vo2MaxMlKgMin: Double
+)
+
+@JsonClass(generateAdapter = true)
+data class BloodGlucoseReadingSync(
+    val timestamp: String,
+    val valueMmolL: Double
 )
 
 @JsonClass(generateAdapter = true)

@@ -59,7 +59,13 @@ class HealthRepositoryImpl @Inject constructor(
                 dailyActivitySummaries = mappedData.dailyActivitySummaries,
                 spO2Readings = mappedData.spO2Readings,
                 hrvReadings = mappedData.hrvReadings,
-                weightReadings = mappedData.weightReadings
+                weightReadings = mappedData.weightReadings,
+                respiratoryRateReadings = mappedData.respiratoryRateReadings,
+                bloodPressureReadings = mappedData.bloodPressureReadings,
+                bodyTemperatureReadings = mappedData.bodyTemperatureReadings,
+                vo2MaxReadings = mappedData.vo2MaxReadings,
+                bloodGlucoseReadings = mappedData.bloodGlucoseReadings,
+                heightCm = mappedData.heightCm
             )
 
             val response = gymDashApi.syncHealthData(token, request)
