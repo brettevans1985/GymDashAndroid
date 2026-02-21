@@ -253,7 +253,7 @@ class HealthDataMapper @Inject constructor() {
                 is HeightRecord -> {
                     if (latestHeightTime == null || record.time > latestHeightTime) {
                         latestHeightTime = record.time
-                        latestHeightCm = record.height.inCentimeters
+                        latestHeightCm = record.height.inMeters * 100.0
                     }
                 }
             }
