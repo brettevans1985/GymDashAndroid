@@ -14,8 +14,9 @@ class AuthRepositoryImpl @Inject constructor(
 ) : AuthRepository {
 
     override suspend fun login(username: String, password: String): Result<Unit> = try {
-        val response = authApi.login(LoginRequest(username, password))
+        val response = authApi.login(LoginRequest(username, password, rememberMe = true))
         preferences.setAuthToken("Bearer ${response.accessToken}")
+        response.refreshToken?.let { preferences.setRefreshToken(it) }
         preferences.setUserId(response.user.id.toString())
         Result.success(Unit)
     } catch (e: HttpException) {
