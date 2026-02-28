@@ -19,6 +19,7 @@ import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.records.Vo2MaxRecord
 import androidx.health.connect.client.records.WeightRecord
+import com.gymdash.companion.domain.model.HealthMetric
 import com.gymdash.companion.data.remote.dto.BloodGlucoseReadingSync
 import com.gymdash.companion.data.remote.dto.BloodPressureReadingSync
 import com.gymdash.companion.data.remote.dto.BodyTemperatureReadingSync
@@ -73,6 +74,21 @@ data class MappedHealthData(
             bodyTemperatureReadings.size +
             vo2MaxReadings.size +
             bloodGlucoseReadings.size
+
+    fun filterByMetrics(selected: Set<HealthMetric>): MappedHealthData = copy(
+        heartRateReadings = if (HealthMetric.HEART_RATE in selected) heartRateReadings else emptyList(),
+        sleepSessions = if (HealthMetric.SLEEP in selected) sleepSessions else emptyList(),
+        dailyActivitySummaries = if (HealthMetric.DAILY_ACTIVITY in selected) dailyActivitySummaries else emptyList(),
+        spO2Readings = if (HealthMetric.SPO2 in selected) spO2Readings else emptyList(),
+        hrvReadings = if (HealthMetric.HRV in selected) hrvReadings else emptyList(),
+        weightReadings = if (HealthMetric.WEIGHT in selected) weightReadings else emptyList(),
+        respiratoryRateReadings = if (HealthMetric.RESPIRATORY_RATE in selected) respiratoryRateReadings else emptyList(),
+        bloodPressureReadings = if (HealthMetric.BLOOD_PRESSURE in selected) bloodPressureReadings else emptyList(),
+        bodyTemperatureReadings = if (HealthMetric.BODY_TEMPERATURE in selected) bodyTemperatureReadings else emptyList(),
+        vo2MaxReadings = if (HealthMetric.VO2_MAX in selected) vo2MaxReadings else emptyList(),
+        bloodGlucoseReadings = if (HealthMetric.BLOOD_GLUCOSE in selected) bloodGlucoseReadings else emptyList(),
+        heightCm = if (HealthMetric.HEIGHT in selected) heightCm else null
+    )
 }
 
 class HealthDataMapper @Inject constructor() {

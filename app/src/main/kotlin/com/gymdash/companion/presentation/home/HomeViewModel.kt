@@ -23,11 +23,13 @@ import androidx.health.connect.client.records.WeightRecord
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gymdash.companion.data.local.datastore.SyncPreferences
+import com.gymdash.companion.data.mapper.MappedHealthData
+import com.gymdash.companion.domain.model.HealthMetric
 import com.gymdash.companion.domain.model.SyncErrorType
 import com.gymdash.companion.domain.model.SyncResult
 import com.gymdash.companion.domain.repository.HeartRateResult
 import com.gymdash.companion.domain.repository.HealthRepository
-import com.gymdash.companion.domain.usecase.SyncHealthDataUseCase
+import com.gymdash.companion.domain.repository.ReadResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -41,6 +43,19 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
+sealed class SyncPreviewState {
+    data object Hidden : SyncPreviewState()
+    data object Loading : SyncPreviewState()
+    data class Ready(
+        val data: MappedHealthData,
+        val metricCounts: Map<HealthMetric, Int>,
+        val selectedMetrics: Set<HealthMetric>
+    ) : SyncPreviewState() {
+        val selectedCount: Int get() = selectedMetrics.sumOf { metricCounts[it] ?: 0 }
+    }
+    data object Sending : SyncPreviewState()
+}
+
 data class HomeUiState(
     val isSyncing: Boolean = false,
     val lastSyncTime: String? = null,
@@ -51,12 +66,12 @@ data class HomeUiState(
     val isLiveHeartRateActive: Boolean = false,
     val currentHeartRate: Int? = null,
     val heartRateStatus: String? = null,
-    val isHealthConnectAvailable: Boolean = true
+    val isHealthConnectAvailable: Boolean = true,
+    val syncPreview: SyncPreviewState = SyncPreviewState.Hidden
 )
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val syncHealthDataUseCase: SyncHealthDataUseCase,
     private val healthRepository: HealthRepository,
     private val preferences: SyncPreferences,
     private val healthConnectClient: HealthConnectClient?
@@ -137,23 +152,93 @@ class HomeViewModel @Inject constructor(
                 return@launch
             }
 
-            _uiState.value = _uiState.value.copy(isSyncing = true, isError = false)
-            when (val result = syncHealthDataUseCase()) {
-                is SyncResult.Success -> {
+            _uiState.value = _uiState.value.copy(
+                syncPreview = SyncPreviewState.Loading,
+                isError = false
+            )
+
+            when (val result = healthRepository.readHealthData()) {
+                is ReadResult.Success -> {
+                    val data = result.data
+                    val metricCounts = HealthMetric.entries.associateWith { it.countIn(data) }
+                    val nonEmpty = metricCounts.filter { it.value > 0 }.keys
                     _uiState.value = _uiState.value.copy(
-                        isSyncing = false,
-                        lastSyncResult = "${result.recordsCreated} created, ${result.recordsUpdated} updated"
+                        syncPreview = SyncPreviewState.Ready(
+                            data = data,
+                            metricCounts = metricCounts,
+                            selectedMetrics = nonEmpty
+                        )
                     )
                 }
-                is SyncResult.Error -> {
+                is ReadResult.Error -> {
                     _uiState.value = _uiState.value.copy(
-                        isSyncing = false,
+                        syncPreview = SyncPreviewState.Hidden,
                         lastSyncResult = userFriendlyMessage(result.type, result.message),
                         isError = true
                     )
                 }
             }
         }
+    }
+
+    fun toggleMetric(metric: HealthMetric) {
+        val preview = _uiState.value.syncPreview
+        if (preview !is SyncPreviewState.Ready) return
+        val count = preview.metricCounts[metric] ?: 0
+        if (count == 0) return
+
+        val updated = if (metric in preview.selectedMetrics) {
+            preview.selectedMetrics - metric
+        } else {
+            preview.selectedMetrics + metric
+        }
+        _uiState.value = _uiState.value.copy(
+            syncPreview = preview.copy(selectedMetrics = updated)
+        )
+    }
+
+    fun toggleAllMetrics() {
+        val preview = _uiState.value.syncPreview
+        if (preview !is SyncPreviewState.Ready) return
+        val nonEmpty = preview.metricCounts.filter { it.value > 0 }.keys
+        val allSelected = nonEmpty == preview.selectedMetrics
+        _uiState.value = _uiState.value.copy(
+            syncPreview = preview.copy(
+                selectedMetrics = if (allSelected) emptySet() else nonEmpty
+            )
+        )
+    }
+
+    fun confirmSync() {
+        val preview = _uiState.value.syncPreview
+        if (preview !is SyncPreviewState.Ready) return
+        if (preview.selectedMetrics.isEmpty()) return
+
+        val filteredData = preview.data.filterByMetrics(preview.selectedMetrics)
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(syncPreview = SyncPreviewState.Sending)
+
+            when (val result = healthRepository.sendHealthData(filteredData)) {
+                is SyncResult.Success -> {
+                    _uiState.value = _uiState.value.copy(
+                        syncPreview = SyncPreviewState.Hidden,
+                        lastSyncResult = "${result.recordsCreated} created, ${result.recordsUpdated} updated"
+                    )
+                }
+                is SyncResult.Error -> {
+                    _uiState.value = _uiState.value.copy(
+                        syncPreview = SyncPreviewState.Hidden,
+                        lastSyncResult = userFriendlyMessage(result.type, result.message),
+                        isError = true
+                    )
+                }
+            }
+        }
+    }
+
+    fun dismissSyncPreview() {
+        _uiState.value = _uiState.value.copy(syncPreview = SyncPreviewState.Hidden)
     }
 
     private fun userFriendlyMessage(type: SyncErrorType, fallback: String): String {

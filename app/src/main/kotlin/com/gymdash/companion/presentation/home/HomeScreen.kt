@@ -2,6 +2,7 @@ package com.gymdash.companion.presentation.home
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Button
@@ -17,23 +20,29 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.health.connect.client.PermissionController
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gymdash.companion.R
+import com.gymdash.companion.domain.model.HealthMetric
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +60,178 @@ fun HomeScreen(
     LaunchedEffect(uiState.needsPermissionRequest) {
         if (uiState.needsPermissionRequest) {
             permissionLauncher.launch(HomeViewModel.HEALTH_PERMISSIONS)
+        }
+    }
+
+    // Sync Preview Bottom Sheet
+    if (uiState.syncPreview !is SyncPreviewState.Hidden) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = viewModel::dismissSyncPreview,
+            sheetState = sheetState
+        ) {
+            when (val preview = uiState.syncPreview) {
+                is SyncPreviewState.Loading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator()
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = stringResource(R.string.sync_preview_reading),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+                }
+                is SyncPreviewState.Ready -> {
+                    val allNonEmpty = preview.metricCounts.filter { it.value > 0 }.keys
+                    val allSelected = allNonEmpty.isNotEmpty() && allNonEmpty == preview.selectedMetrics
+                    val hasData = allNonEmpty.isNotEmpty()
+
+                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        // Header
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(R.string.sync_preview_title),
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                            if (hasData) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = stringResource(R.string.sync_preview_select_all),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Switch(
+                                        checked = allSelected,
+                                        onCheckedChange = { viewModel.toggleAllMetrics() }
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        if (!hasData) {
+                            // Empty state
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.sync_preview_no_data),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = viewModel::dismissSyncPreview,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(stringResource(R.string.sync_preview_cancel))
+                            }
+                        } else {
+                            // Metric list
+                            LazyColumn(
+                                modifier = Modifier.weight(1f, fill = false)
+                            ) {
+                                items(HealthMetric.entries) { metric ->
+                                    val count = preview.metricCounts[metric] ?: 0
+                                    val isSelected = metric in preview.selectedMetrics
+                                    val enabled = count > 0
+
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = metric.displayName,
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                color = if (enabled)
+                                                    MaterialTheme.colorScheme.onSurface
+                                                else
+                                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                            )
+                                            Text(
+                                                text = if (count == 1)
+                                                    stringResource(R.string.sync_preview_record, count)
+                                                else
+                                                    stringResource(R.string.sync_preview_records, count),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = if (enabled)
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                else
+                                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                                            )
+                                        }
+                                        Switch(
+                                            checked = isSelected,
+                                            onCheckedChange = { viewModel.toggleMetric(metric) },
+                                            enabled = enabled
+                                        )
+                                    }
+                                    HorizontalDivider()
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Footer buttons
+                            Button(
+                                onClick = viewModel::confirmSync,
+                                enabled = preview.selectedMetrics.isNotEmpty(),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(stringResource(R.string.sync_preview_send, preview.selectedCount))
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = viewModel::dismissSyncPreview,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(stringResource(R.string.sync_preview_cancel))
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                }
+                is SyncPreviewState.Sending -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator()
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = stringResource(R.string.sync_preview_sending),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+                }
+                is SyncPreviewState.Hidden -> { /* handled by outer if */ }
+            }
         }
     }
 
@@ -212,9 +393,10 @@ fun HomeScreen(
                 }
             }
 
+            val isPreviewActive = uiState.syncPreview !is SyncPreviewState.Hidden
             Button(
                 onClick = viewModel::syncNow,
-                enabled = !uiState.isSyncing,
+                enabled = !uiState.isSyncing && !isPreviewActive,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (uiState.isSyncing) {

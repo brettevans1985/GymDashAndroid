@@ -8,6 +8,7 @@ import com.gymdash.companion.data.local.datastore.SyncPreferences
 import com.gymdash.companion.data.local.db.dao.SyncLogDao
 import com.gymdash.companion.data.local.db.dao.SyncLogEntity
 import com.gymdash.companion.data.mapper.HealthDataMapper
+import com.gymdash.companion.data.mapper.MappedHealthData
 import com.gymdash.companion.data.mock.MockHealthDataGenerator
 import com.gymdash.companion.data.remote.api.GymDashApi
 import com.gymdash.companion.data.remote.dto.HeartRateReadingSync
@@ -16,6 +17,7 @@ import com.gymdash.companion.domain.model.SyncErrorType
 import com.gymdash.companion.domain.model.SyncResult
 import com.gymdash.companion.domain.repository.HeartRateResult
 import com.gymdash.companion.domain.repository.HealthRepository
+import com.gymdash.companion.domain.repository.ReadResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import retrofit2.HttpException
@@ -34,8 +36,15 @@ class HealthRepositoryImpl @Inject constructor(
 ) : HealthRepository {
 
     override suspend fun syncHealthData(): SyncResult {
-        val token = preferences.authToken.first()
-            ?: return SyncResult.Error("Not authenticated", SyncErrorType.AUTH_EXPIRED)
+        return when (val readResult = readHealthData()) {
+            is ReadResult.Success -> sendHealthData(readResult.data)
+            is ReadResult.Error -> SyncResult.Error(readResult.message, readResult.type)
+        }
+    }
+
+    override suspend fun readHealthData(): ReadResult {
+        preferences.authToken.first()
+            ?: return ReadResult.Error("Not authenticated", SyncErrorType.AUTH_EXPIRED)
 
         return try {
             val serverUrl = preferences.serverUrl.first()
@@ -74,24 +83,36 @@ class HealthRepositoryImpl @Inject constructor(
                 mapper.mapRecords(records)
             }
 
-            if (mappedData.isEmpty) {
+            ReadResult.Success(mappedData)
+        } catch (e: Exception) {
+            val (errorType, message) = classifyError(e)
+            ReadResult.Error(message, errorType)
+        }
+    }
+
+    override suspend fun sendHealthData(data: MappedHealthData): SyncResult {
+        val token = preferences.authToken.first()
+            ?: return SyncResult.Error("Not authenticated", SyncErrorType.AUTH_EXPIRED)
+
+        return try {
+            if (data.isEmpty) {
                 return SyncResult.Success(recordsProcessed = 0, recordsCreated = 0, recordsUpdated = 0)
             }
 
             val request = HealthSyncRequest(
                 deviceName = Build.MODEL,
-                heartRateReadings = mappedData.heartRateReadings,
-                sleepSessions = mappedData.sleepSessions,
-                dailyActivitySummaries = mappedData.dailyActivitySummaries,
-                spO2Readings = mappedData.spO2Readings,
-                hrvReadings = mappedData.hrvReadings,
-                weightReadings = mappedData.weightReadings,
-                respiratoryRateReadings = mappedData.respiratoryRateReadings,
-                bloodPressureReadings = mappedData.bloodPressureReadings,
-                bodyTemperatureReadings = mappedData.bodyTemperatureReadings,
-                vo2MaxReadings = mappedData.vo2MaxReadings,
-                bloodGlucoseReadings = mappedData.bloodGlucoseReadings,
-                heightCm = mappedData.heightCm
+                heartRateReadings = data.heartRateReadings,
+                sleepSessions = data.sleepSessions,
+                dailyActivitySummaries = data.dailyActivitySummaries,
+                spO2Readings = data.spO2Readings,
+                hrvReadings = data.hrvReadings,
+                weightReadings = data.weightReadings,
+                respiratoryRateReadings = data.respiratoryRateReadings,
+                bloodPressureReadings = data.bloodPressureReadings,
+                bodyTemperatureReadings = data.bodyTemperatureReadings,
+                vo2MaxReadings = data.vo2MaxReadings,
+                bloodGlucoseReadings = data.bloodGlucoseReadings,
+                heightCm = data.heightCm
             )
 
             val response = gymDashApi.syncHealthData(token, request)
