@@ -5,7 +5,6 @@ import androidx.health.connect.client.records.HeartRateRecord
 import com.gymdash.companion.BuildConfig
 import com.gymdash.companion.data.healthconnect.HealthConnectDataSource
 import com.gymdash.companion.data.local.datastore.SyncPreferences
-import com.gymdash.companion.data.local.datastore.WaterPreferences
 import com.gymdash.companion.data.local.db.dao.SyncLogDao
 import com.gymdash.companion.data.local.db.dao.SyncLogEntity
 import com.gymdash.companion.data.mapper.HealthDataMapper
@@ -14,7 +13,6 @@ import com.gymdash.companion.data.mock.MockHealthDataGenerator
 import com.gymdash.companion.data.remote.api.GymDashApi
 import com.gymdash.companion.data.remote.dto.HeartRateReadingSync
 import com.gymdash.companion.data.remote.dto.HealthSyncRequest
-import com.gymdash.companion.data.remote.dto.WaterIntakeSync
 import com.gymdash.companion.domain.model.SyncErrorType
 import com.gymdash.companion.domain.model.SyncResult
 import com.gymdash.companion.domain.repository.HeartRateResult
@@ -22,7 +20,6 @@ import com.gymdash.companion.domain.repository.HealthRepository
 import com.gymdash.companion.domain.repository.ReadResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import java.time.LocalDate
 import retrofit2.HttpException
 import java.net.ConnectException
 import java.net.UnknownHostException
@@ -35,8 +32,7 @@ class HealthRepositoryImpl @Inject constructor(
     private val mapper: HealthDataMapper,
     private val syncLogDao: SyncLogDao,
     private val preferences: SyncPreferences,
-    private val mockHealthDataGenerator: MockHealthDataGenerator,
-    private val waterPreferences: WaterPreferences
+    private val mockHealthDataGenerator: MockHealthDataGenerator
 ) : HealthRepository {
 
     override suspend fun syncHealthData(): SyncResult {
@@ -99,19 +95,8 @@ class HealthRepositoryImpl @Inject constructor(
             ?: return SyncResult.Error("Not authenticated", SyncErrorType.AUTH_EXPIRED)
 
         return try {
-            // Read today's water intake from local DataStore
-            val waterMl = waterPreferences.waterMl.first()
-
-            if (data.isEmpty && waterMl <= 0) {
+            if (data.isEmpty) {
                 return SyncResult.Success(recordsProcessed = 0, recordsCreated = 0, recordsUpdated = 0)
-            }
-            val waterIntakes = if (waterMl > 0) {
-                listOf(WaterIntakeSync(
-                    calendarDate = LocalDate.now().toString(),
-                    amountMl = waterMl
-                ))
-            } else {
-                data.waterIntakes
             }
 
             val request = HealthSyncRequest(
@@ -127,7 +112,7 @@ class HealthRepositoryImpl @Inject constructor(
                 bodyTemperatureReadings = data.bodyTemperatureReadings,
                 vo2MaxReadings = data.vo2MaxReadings,
                 bloodGlucoseReadings = data.bloodGlucoseReadings,
-                waterIntakes = waterIntakes,
+                waterIntakes = data.waterIntakes,
                 heightCm = data.heightCm
             )
 
