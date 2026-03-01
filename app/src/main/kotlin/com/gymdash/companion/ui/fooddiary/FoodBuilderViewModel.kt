@@ -254,6 +254,33 @@ class FoodBuilderViewModel @Inject constructor(
         }
     }
 
+    fun scanBarcode(barcode: String) {
+        _uiState.update { it.copy(isSearching = true, errorMessage = null) }
+        viewModelScope.launch {
+            try {
+                val product = repository.lookupBarcode(barcode)
+                if (product != null) {
+                    _uiState.update { state ->
+                        state.copy(
+                            ingredients = state.ingredients + BuilderIngredient(foodProduct = product),
+                            isSearching = false
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(
+                        errorMessage = "Product not found for barcode $barcode",
+                        isSearching = false
+                    ) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    errorMessage = "Barcode lookup failed: ${e.message}",
+                    isSearching = false
+                ) }
+            }
+        }
+    }
+
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
     }

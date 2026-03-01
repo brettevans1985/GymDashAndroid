@@ -3,6 +3,11 @@ package com.gymdash.companion.data.remote.dto
 import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = true)
+data class FoodSearchResponse(
+    val results: List<FoodLookupResponse>
+)
+
+@JsonClass(generateAdapter = true)
 data class FoodLookupResponse(
     val id: Int,
     val barcode: String?,

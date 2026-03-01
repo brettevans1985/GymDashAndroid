@@ -4,6 +4,7 @@ import com.gymdash.companion.data.remote.dto.CreateBuilderEntriesRequest
 import com.gymdash.companion.data.remote.dto.CreateFoodDiaryEntryRequest
 import com.gymdash.companion.data.remote.dto.CreateRecipeRequest
 import com.gymdash.companion.data.remote.dto.FoodLookupResponse
+import com.gymdash.companion.data.remote.dto.FoodSearchResponse
 import com.gymdash.companion.data.remote.dto.RecipeDto
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -26,7 +27,7 @@ interface FoodDiaryApi {
     suspend fun searchFood(
         @Header("Authorization") token: String,
         @Query("query") query: String
-    ): List<FoodLookupResponse>
+    ): FoodSearchResponse
 
     @POST("food-diary")
     suspend fun createEntry(

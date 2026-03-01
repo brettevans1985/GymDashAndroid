@@ -16,14 +16,49 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+
+private enum class MeasurementType(val label: String) {
+    POWDER("Powder"),
+    GRANULATED("Granulated"),
+    LIQUID("Liquid")
+}
+
+private data class MeasurementPreset(val label: String, val grams: Double)
+
+private fun presetsFor(type: MeasurementType): List<MeasurementPreset> = when (type) {
+    MeasurementType.POWDER -> listOf(
+        MeasurementPreset("1 tsp", 3.0),
+        MeasurementPreset("1 tbsp", 8.0),
+        MeasurementPreset("¼ cup", 21.0),
+        MeasurementPreset("½ cup", 42.0),
+        MeasurementPreset("1 cup", 85.0),
+    )
+    MeasurementType.GRANULATED -> listOf(
+        MeasurementPreset("1 tsp", 4.0),
+        MeasurementPreset("1 tbsp", 12.0),
+        MeasurementPreset("¼ cup", 50.0),
+        MeasurementPreset("½ cup", 100.0),
+        MeasurementPreset("1 cup", 200.0),
+    )
+    MeasurementType.LIQUID -> listOf(
+        MeasurementPreset("1 tsp", 5.0),
+        MeasurementPreset("1 tbsp", 15.0),
+        MeasurementPreset("¼ cup", 60.0),
+        MeasurementPreset("½ cup", 120.0),
+        MeasurementPreset("1 cup", 240.0),
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FoodBuilderScreen(
     viewModel: FoodBuilderViewModel,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToScanner: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val mealNames = listOf("Breakfast", "Lunch", "Dinner", "Snack")
@@ -81,6 +116,12 @@ fun FoodBuilderScreen(
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Add Ingredient")
+                }
+                OutlinedButton(
+                    onClick = onNavigateToScanner,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Scan")
                 }
                 OutlinedButton(
                     onClick = { viewModel.loadRecipes() },
@@ -147,8 +188,15 @@ fun FoodBuilderScreen(
                                     if (product.brand != null) {
                                         Text(product.brand, style = MaterialTheme.typography.bodySmall)
                                     }
+                                    val servingLabel = buildString {
+                                        val size = product.servingSize
+                                        if (size != null) {
+                                            append(if (size == size.toLong().toDouble()) size.toLong().toString() else size.toString())
+                                        }
+                                        append(product.servingUnit ?: "g")
+                                    }
                                     Text(
-                                        "${product.caloriesPerServing ?: "—"} kcal | P: ${product.proteinPerServing ?: "—"}g | C: ${product.carbsPerServing ?: "—"}g | F: ${product.fatPerServing ?: "—"}g",
+                                        "$servingLabel — ${product.caloriesPerServing ?: "—"} kcal | P: ${product.proteinPerServing ?: "—"}g | C: ${product.carbsPerServing ?: "—"}g | F: ${product.fatPerServing ?: "—"}g",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -377,6 +425,8 @@ private fun IngredientCard(
     var divisorText by remember(ingredient.localId, ingredient.divisor) {
         mutableStateOf(if (ingredient.divisor == ingredient.divisor.toLong().toDouble()) ingredient.divisor.toLong().toString() else ingredient.divisor.toString())
     }
+    var selectedType by remember { mutableStateOf(MeasurementType.POWDER) }
+    var showMeasurements by remember { mutableStateOf(false) }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -390,6 +440,22 @@ private fun IngredientCard(
                     if (ingredient.foodProduct.brand != null) {
                         Text(ingredient.foodProduct.brand, style = MaterialTheme.typography.bodySmall)
                     }
+                    val servingInfo = buildString {
+                        append("Serving: ")
+                        val size = ingredient.foodProduct.servingSize
+                        if (size != null) {
+                            append(if (size == size.toLong().toDouble()) size.toLong().toString() else size.toString())
+                        } else {
+                            append("—")
+                        }
+                        val unit = ingredient.foodProduct.servingUnit
+                        if (unit != null) append(unit) else append("g")
+                    }
+                    Text(
+                        servingInfo,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
                 IconButton(onClick = onRemove) {
                     Icon(Icons.Default.Delete, contentDescription = "Remove", tint = MaterialTheme.colorScheme.error)
@@ -407,7 +473,7 @@ private fun IngredientCard(
                         quantityText = it
                         it.toDoubleOrNull()?.let { qty -> if (qty > 0) onQuantityChange(qty) }
                     },
-                    label = { Text("Qty") },
+                    label = { Text("Qty (servings)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.weight(1f),
                     singleLine = true
@@ -424,6 +490,61 @@ private fun IngredientCard(
                     modifier = Modifier.weight(1f),
                     singleLine = true
                 )
+            }
+
+            // Measurement shortcuts
+            TextButton(
+                onClick = { showMeasurements = !showMeasurements },
+                modifier = Modifier.padding(top = 2.dp)
+            ) {
+                Text(
+                    if (showMeasurements) "Hide measurements" else "Use measurement",
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+
+            if (showMeasurements) {
+                // Ingredient type selector
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    MeasurementType.entries.forEach { type ->
+                        FilterChip(
+                            selected = selectedType == type,
+                            onClick = { selectedType = type },
+                            label = { Text(type.label, style = MaterialTheme.typography.labelSmall) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Measurement preset chips
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val servingSize = ingredient.foodProduct.servingSize ?: 100.0
+                    presetsFor(selectedType).forEach { preset ->
+                        val newQty = preset.grams / servingSize
+                        AssistChip(
+                            onClick = {
+                                onQuantityChange(newQty)
+                                showMeasurements = false
+                            },
+                            label = {
+                                Text(
+                                    "${preset.label} (${preset.grams.toInt()}g)",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(4.dp))

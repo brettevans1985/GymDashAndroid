@@ -32,7 +32,7 @@ class FoodDiaryRepositoryImpl @Inject constructor(
         val token = preferences.authToken.first()
             ?: throw IllegalStateException("Not authenticated")
 
-        return foodDiaryApi.searchFood(token, query)
+        return foodDiaryApi.searchFood(token, query).results
     }
 
     override suspend fun createEntry(request: CreateFoodDiaryEntryRequest) {

@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,10 +20,13 @@ import kotlinx.coroutines.launch
 @Composable
 fun FoodDiaryScreen(
     repository: FoodDiaryRepository,
+    waterTrackerViewModel: WaterTrackerViewModel,
     onNavigateToScanner: () -> Unit,
     onNavigateToSearch: () -> Unit,
     onNavigateToBuilder: () -> Unit = {}
 ) {
+    val waterState by waterTrackerViewModel.uiState.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("Food Diary") })
@@ -63,11 +67,99 @@ fun FoodDiaryScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Water tracker card
+            WaterTrackerCard(
+                currentMl = waterState.currentMl,
+                goalMl = waterState.goalMl,
+                glasses = waterState.glasses,
+                progress = waterState.progress,
+                onAddGlass = { waterTrackerViewModel.addGlass() },
+                onRemoveGlass = { waterTrackerViewModel.removeGlass() }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Text(
                 "Tap the + button to scan a food barcode, or Search to find food by name.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun WaterTrackerCard(
+    currentMl: Int,
+    goalMl: Int,
+    glasses: Int,
+    progress: Float,
+    onAddGlass: () -> Unit,
+    onRemoveGlass: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                "Water Today",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp),
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                "$currentMl / $goalMl ml",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FilledTonalIconButton(
+                    onClick = onRemoveGlass,
+                    enabled = currentMl > 0
+                ) {
+                    Icon(Icons.Default.Remove, contentDescription = "Remove glass")
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Text(
+                    "$glasses glasses",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Medium
+                )
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                FilledTonalIconButton(onClick = onAddGlass) {
+                    Icon(Icons.Default.Add, contentDescription = "Add glass")
+                }
+            }
         }
     }
 }

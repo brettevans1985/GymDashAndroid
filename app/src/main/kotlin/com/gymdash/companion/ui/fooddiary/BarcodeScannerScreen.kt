@@ -35,6 +35,211 @@ import java.util.concurrent.Executors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun BarcodeScannerForBuilderScreen(
+    repository: FoodDiaryRepository,
+    onNavigateBack: () -> Unit,
+    onBarcodeScanned: (String) -> Unit
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                PackageManager.PERMISSION_GRANTED
+        )
+    }
+    var showManualInput by remember { mutableStateOf(false) }
+    var scannedBarcode by remember { mutableStateOf("") }
+    var barcodeProcessed by remember { mutableStateOf(false) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasCameraPermission = granted
+        if (!granted) showManualInput = true
+    }
+
+    LaunchedEffect(Unit) {
+        if (!hasCameraPermission) {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Scan Ingredient") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Text("<")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (!showManualInput && hasCameraPermission) {
+                Text(
+                    "Point camera at a barcode",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(8.dp)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AndroidView(
+                        factory = { ctx ->
+                            val previewView = PreviewView(ctx)
+                            val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+
+                            cameraProviderFuture.addListener({
+                                val cameraProvider = cameraProviderFuture.get()
+
+                                val preview = Preview.Builder().build().also {
+                                    it.surfaceProvider = previewView.surfaceProvider
+                                }
+
+                                val barcodeScanner = BarcodeScanning.getClient()
+                                val analysisExecutor = Executors.newSingleThreadExecutor()
+
+                                val imageAnalysis = ImageAnalysis.Builder()
+                                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                    .build()
+                                    .also { analysis ->
+                                        analysis.setAnalyzer(analysisExecutor) { imageProxy ->
+                                            @androidx.camera.core.ExperimentalGetImage
+                                            val mediaImage = imageProxy.image
+                                            if (mediaImage != null && !barcodeProcessed) {
+                                                val inputImage = InputImage.fromMediaImage(
+                                                    mediaImage,
+                                                    imageProxy.imageInfo.rotationDegrees
+                                                )
+                                                barcodeScanner.process(inputImage)
+                                                    .addOnSuccessListener { barcodes ->
+                                                        for (barcode in barcodes) {
+                                                            val rawValue = barcode.rawValue ?: continue
+                                                            val format = barcode.format
+                                                            if (format == Barcode.FORMAT_EAN_13 ||
+                                                                format == Barcode.FORMAT_EAN_8 ||
+                                                                format == Barcode.FORMAT_UPC_A ||
+                                                                format == Barcode.FORMAT_UPC_E
+                                                            ) {
+                                                                barcodeProcessed = true
+                                                                onBarcodeScanned(rawValue)
+                                                                break
+                                                            }
+                                                        }
+                                                    }
+                                                    .addOnFailureListener { e ->
+                                                        Log.e("BarcodeScanner", "Scan failed", e)
+                                                    }
+                                                    .addOnCompleteListener {
+                                                        imageProxy.close()
+                                                    }
+                                            } else {
+                                                imageProxy.close()
+                                            }
+                                        }
+                                    }
+
+                                try {
+                                    cameraProvider.unbindAll()
+                                    cameraProvider.bindToLifecycle(
+                                        lifecycleOwner,
+                                        CameraSelector.DEFAULT_BACK_CAMERA,
+                                        preview,
+                                        imageAnalysis
+                                    )
+                                } catch (e: Exception) {
+                                    Log.e("BarcodeScanner", "Camera bind failed", e)
+                                }
+                            }, ContextCompat.getMainExecutor(ctx))
+
+                            previewView
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                TextButton(
+                    onClick = { showManualInput = true },
+                    modifier = Modifier.padding(bottom = 16.dp)
+                ) {
+                    Text("Enter barcode manually")
+                }
+            } else {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    if (!hasCameraPermission) {
+                        Text(
+                            "Camera permission denied. Enter barcode manually.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextButton(onClick = {
+                            permissionLauncher.launch(Manifest.permission.CAMERA)
+                        }) {
+                            Text("Grant camera permission")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    } else {
+                        Text(
+                            "Enter barcode manually",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    OutlinedTextField(
+                        value = scannedBarcode,
+                        onValueChange = { scannedBarcode = it },
+                        label = { Text("Barcode") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Button(
+                        onClick = { onBarcodeScanned(scannedBarcode) },
+                        enabled = scannedBarcode.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Add to Builder")
+                    }
+
+                    if (hasCameraPermission) {
+                        TextButton(onClick = {
+                            showManualInput = false
+                            barcodeProcessed = false
+                        }) {
+                            Text("Back to camera")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun BarcodeScannerScreen(
     repository: FoodDiaryRepository,
     onNavigateBack: () -> Unit,
