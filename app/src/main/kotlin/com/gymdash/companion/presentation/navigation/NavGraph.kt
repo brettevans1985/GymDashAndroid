@@ -28,6 +28,8 @@ import com.gymdash.companion.presentation.home.HomeScreen
 import com.gymdash.companion.presentation.login.LoginScreen
 import com.gymdash.companion.presentation.settings.SettingsScreen
 import com.gymdash.companion.ui.fooddiary.BarcodeScannerScreen
+import com.gymdash.companion.ui.fooddiary.FoodBuilderScreen
+import com.gymdash.companion.ui.fooddiary.FoodBuilderViewModel
 import com.gymdash.companion.ui.fooddiary.FoodDiaryScreen
 import com.gymdash.companion.ui.fooddiary.FoodDiaryViewModel
 import com.gymdash.companion.ui.fooddiary.FoodSearchScreen
@@ -40,6 +42,7 @@ object Routes {
     const val FOOD_DIARY = "food_diary"
     const val FOOD_SCANNER = "food_scanner"
     const val FOOD_SEARCH = "food_search"
+    const val FOOD_BUILDER = "food_builder"
 }
 
 data class BottomNavItem(
@@ -139,7 +142,8 @@ fun NavGraph(
                 FoodDiaryScreen(
                     repository = viewModel.repository,
                     onNavigateToScanner = { navController.navigate(Routes.FOOD_SCANNER) },
-                    onNavigateToSearch = { navController.navigate(Routes.FOOD_SEARCH) }
+                    onNavigateToSearch = { navController.navigate(Routes.FOOD_SEARCH) },
+                    onNavigateToBuilder = { navController.navigate(Routes.FOOD_BUILDER) }
                 )
             }
             composable(Routes.FOOD_SCANNER) {
@@ -154,6 +158,13 @@ fun NavGraph(
                 val viewModel: FoodDiaryViewModel = hiltViewModel()
                 FoodSearchScreen(
                     repository = viewModel.repository,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(Routes.FOOD_BUILDER) {
+                val viewModel: FoodBuilderViewModel = hiltViewModel()
+                FoodBuilderScreen(
+                    viewModel = viewModel,
                     onNavigateBack = { navController.popBackStack() }
                 )
             }

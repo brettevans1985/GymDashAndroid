@@ -27,4 +27,15 @@
     <string name="sync_preview_cancel">Cancel</string>
     <string name="sync_preview_records">%1$d records</string>
     <string name="sync_preview_record">%1$d record</string>
+    <string name="builder_title">Item Builder</string>
+    <string name="builder_add_ingredient">Add Ingredient</string>
+    <string name="builder_recipes">Recipes</string>
+    <string name="builder_save_to_diary">Save to Diary</string>
+    <string name="builder_combined_entry">Combined entry</string>
+    <string name="builder_individual_entries">Individual entries</string>
+    <string name="builder_combined_name">Combined name (optional)</string>
+    <string name="builder_save_as_recipe">Save as recipe</string>
+    <string name="builder_recipe_name">Recipe name</string>
+    <string name="builder_saved_recipes">Saved Recipes</string>
+    <string name="builder_no_recipes">No saved recipes yet</string>
 </resources>

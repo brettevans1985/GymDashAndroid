@@ -20,7 +20,8 @@ import kotlinx.coroutines.launch
 fun FoodDiaryScreen(
     repository: FoodDiaryRepository,
     onNavigateToScanner: () -> Unit,
-    onNavigateToSearch: () -> Unit
+    onNavigateToSearch: () -> Unit,
+    onNavigateToBuilder: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -28,6 +29,13 @@ fun FoodDiaryScreen(
         },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
+                SmallFloatingActionButton(
+                    onClick = onNavigateToBuilder,
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                ) {
+                    Text("Build", modifier = Modifier.padding(horizontal = 8.dp))
+                }
+                Spacer(modifier = Modifier.height(8.dp))
                 SmallFloatingActionButton(
                     onClick = onNavigateToSearch,
                     containerColor = MaterialTheme.colorScheme.secondaryContainer

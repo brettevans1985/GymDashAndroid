@@ -2,8 +2,11 @@ package com.gymdash.companion.data.repository
 
 import com.gymdash.companion.data.local.datastore.SyncPreferences
 import com.gymdash.companion.data.remote.api.FoodDiaryApi
+import com.gymdash.companion.data.remote.dto.CreateBuilderEntriesRequest
 import com.gymdash.companion.data.remote.dto.CreateFoodDiaryEntryRequest
+import com.gymdash.companion.data.remote.dto.CreateRecipeRequest
 import com.gymdash.companion.data.remote.dto.FoodLookupResponse
+import com.gymdash.companion.data.remote.dto.RecipeDto
 import com.gymdash.companion.domain.repository.FoodDiaryRepository
 import kotlinx.coroutines.flow.first
 import retrofit2.HttpException
@@ -37,5 +40,40 @@ class FoodDiaryRepositoryImpl @Inject constructor(
             ?: throw IllegalStateException("Not authenticated")
 
         foodDiaryApi.createEntry(token, request)
+    }
+
+    override suspend fun getRecipes(): List<RecipeDto> {
+        val token = preferences.authToken.first()
+            ?: throw IllegalStateException("Not authenticated")
+
+        return foodDiaryApi.getRecipes(token)
+    }
+
+    override suspend fun getRecipe(id: Int): RecipeDto {
+        val token = preferences.authToken.first()
+            ?: throw IllegalStateException("Not authenticated")
+
+        return foodDiaryApi.getRecipe(token, id)
+    }
+
+    override suspend fun createRecipe(request: CreateRecipeRequest): RecipeDto {
+        val token = preferences.authToken.first()
+            ?: throw IllegalStateException("Not authenticated")
+
+        return foodDiaryApi.createRecipe(token, request)
+    }
+
+    override suspend fun deleteRecipe(id: Int) {
+        val token = preferences.authToken.first()
+            ?: throw IllegalStateException("Not authenticated")
+
+        foodDiaryApi.deleteRecipe(token, id)
+    }
+
+    override suspend fun addBuilderEntriesToDiary(request: CreateBuilderEntriesRequest) {
+        val token = preferences.authToken.first()
+            ?: throw IllegalStateException("Not authenticated")
+
+        foodDiaryApi.addBuilderEntriesToDiary(token, request)
     }
 }
