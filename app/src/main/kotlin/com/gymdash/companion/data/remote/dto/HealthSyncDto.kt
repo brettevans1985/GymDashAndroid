@@ -16,6 +16,7 @@ data class HealthSyncRequest(
     val bodyTemperatureReadings: List<BodyTemperatureReadingSync> = emptyList(),
     val vo2MaxReadings: List<Vo2MaxReadingSync> = emptyList(),
     val bloodGlucoseReadings: List<BloodGlucoseReadingSync> = emptyList(),
+    val waterIntakes: List<WaterIntakeSync> = emptyList(),
     val heightCm: Double? = null
 )
 
@@ -99,6 +100,12 @@ data class Vo2MaxReadingSync(
 data class BloodGlucoseReadingSync(
     val timestamp: String,
     val valueMmolL: Double
+)
+
+@JsonClass(generateAdapter = true)
+data class WaterIntakeSync(
+    val calendarDate: String,
+    val amountMl: Int
 )
 
 @JsonClass(generateAdapter = true)

@@ -11,6 +11,7 @@ import com.gymdash.companion.data.remote.dto.RespiratoryRateReadingSync
 import com.gymdash.companion.data.remote.dto.SleepSessionSync
 import com.gymdash.companion.data.remote.dto.SpO2ReadingSync
 import com.gymdash.companion.data.remote.dto.Vo2MaxReadingSync
+import com.gymdash.companion.data.remote.dto.WaterIntakeSync
 import com.gymdash.companion.data.remote.dto.WeightReadingSync
 import java.time.Instant
 import java.time.LocalDate
@@ -39,6 +40,12 @@ class MockHealthDataGenerator @Inject constructor() {
             bodyTemperatureReadings = generateBodyTemperatureReadings(now),
             vo2MaxReadings = generateVo2MaxReadings(today),
             bloodGlucoseReadings = generateBloodGlucoseReadings(now),
+            waterIntakes = listOf(
+                WaterIntakeSync(
+                    calendarDate = today.toString(),
+                    amountMl = Random.nextInt(500, 2500)
+                )
+            ),
             heightCm = 175.0
         )
     }

@@ -30,6 +30,7 @@ import com.gymdash.companion.data.remote.dto.RespiratoryRateReadingSync
 import com.gymdash.companion.data.remote.dto.SleepSessionSync
 import com.gymdash.companion.data.remote.dto.SpO2ReadingSync
 import com.gymdash.companion.data.remote.dto.Vo2MaxReadingSync
+import com.gymdash.companion.data.remote.dto.WaterIntakeSync
 import com.gymdash.companion.data.remote.dto.WeightReadingSync
 import java.time.Duration
 import java.time.Instant
@@ -49,6 +50,7 @@ data class MappedHealthData(
     val bodyTemperatureReadings: List<BodyTemperatureReadingSync>,
     val vo2MaxReadings: List<Vo2MaxReadingSync>,
     val bloodGlucoseReadings: List<BloodGlucoseReadingSync>,
+    val waterIntakes: List<WaterIntakeSync> = emptyList(),
     val heightCm: Double? = null
 ) {
     val isEmpty: Boolean get() = heartRateReadings.isEmpty() &&
@@ -61,7 +63,8 @@ data class MappedHealthData(
             bloodPressureReadings.isEmpty() &&
             bodyTemperatureReadings.isEmpty() &&
             vo2MaxReadings.isEmpty() &&
-            bloodGlucoseReadings.isEmpty()
+            bloodGlucoseReadings.isEmpty() &&
+            waterIntakes.isEmpty()
 
     val totalRecords: Int get() = heartRateReadings.size +
             sleepSessions.size +
@@ -73,7 +76,8 @@ data class MappedHealthData(
             bloodPressureReadings.size +
             bodyTemperatureReadings.size +
             vo2MaxReadings.size +
-            bloodGlucoseReadings.size
+            bloodGlucoseReadings.size +
+            waterIntakes.size
 
     fun filterByMetrics(selected: Set<HealthMetric>): MappedHealthData = copy(
         heartRateReadings = if (HealthMetric.HEART_RATE in selected) heartRateReadings else emptyList(),
