@@ -1,7 +1,21 @@
 package com.gymdash.companion.data.repository
 
 import android.os.Build
+import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
+import androidx.health.connect.client.records.BloodGlucoseRecord
+import androidx.health.connect.client.records.BloodPressureRecord
+import androidx.health.connect.client.records.BodyTemperatureRecord
+import androidx.health.connect.client.records.DistanceRecord
+import androidx.health.connect.client.records.FloorsClimbedRecord
 import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
+import androidx.health.connect.client.records.OxygenSaturationRecord
+import androidx.health.connect.client.records.RespiratoryRateRecord
+import androidx.health.connect.client.records.RestingHeartRateRecord
+import androidx.health.connect.client.records.SleepSessionRecord
+import androidx.health.connect.client.records.StepsRecord
+import androidx.health.connect.client.records.Vo2MaxRecord
+import androidx.health.connect.client.records.WeightRecord
 import com.gymdash.companion.BuildConfig
 import com.gymdash.companion.data.healthconnect.HealthConnectDataSource
 import com.gymdash.companion.data.local.datastore.SyncPreferences
@@ -11,19 +25,22 @@ import com.gymdash.companion.data.mapper.HealthDataMapper
 import com.gymdash.companion.data.mapper.MappedHealthData
 import com.gymdash.companion.data.mock.MockHealthDataGenerator
 import com.gymdash.companion.data.remote.api.GymDashApi
-import com.gymdash.companion.data.remote.dto.HeartRateReadingSync
 import com.gymdash.companion.data.remote.dto.HealthSyncRequest
 import com.gymdash.companion.domain.model.SyncErrorType
 import com.gymdash.companion.domain.model.SyncResult
-import com.gymdash.companion.domain.repository.HeartRateResult
 import com.gymdash.companion.domain.repository.HealthRepository
 import com.gymdash.companion.domain.repository.ReadResult
+import com.gymdash.companion.domain.repository.TodaySummary
+import com.gymdash.companion.domain.repository.TodaySummaryResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import retrofit2.HttpException
 import java.net.ConnectException
 import java.net.UnknownHostException
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 
 class HealthRepositoryImpl @Inject constructor(
@@ -170,44 +187,109 @@ class HealthRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun sendLatestHeartRate(): HeartRateResult {
-        val token = preferences.authToken.first()
-            ?: return HeartRateResult.Error("Not authenticated")
-
+    override suspend fun readTodaySummary(): TodaySummaryResult {
         return try {
+            val zone = ZoneId.systemDefault()
             val now = Instant.now()
-            val windowStart = now.minusSeconds(30)
+            val startOfDay = LocalDate.now(zone).atStartOfDay(zone).toInstant()
+            val thirtyDaysAgo = now.minus(30, ChronoUnit.DAYS)
 
-            val records = healthConnectDataSource.readRecords(
-                HeartRateRecord::class, windowStart, now
-            )
+            val steps = healthConnectDataSource.readRecords(StepsRecord::class, startOfDay, now)
+                .sumOf { it.count }
+                .takeIf { it > 0 }
 
-            if (records.isEmpty()) return HeartRateResult.NoData
+            val distanceKm = healthConnectDataSource.readRecords(DistanceRecord::class, startOfDay, now)
+                .sumOf { it.distance.inKilometers }
+                .takeIf { it > 0.0 }
 
-            val latestSample = records
+            val activeCalories = healthConnectDataSource.readRecords(ActiveCaloriesBurnedRecord::class, startOfDay, now)
+                .sumOf { it.energy.inKilocalories }
+                .takeIf { it > 0.0 }
+
+            val floors = healthConnectDataSource.readRecords(FloorsClimbedRecord::class, startOfDay, now)
+                .sumOf { it.floors }
+                .takeIf { it > 0.0 }
+
+            val weightKg = healthConnectDataSource.readRecords(WeightRecord::class, thirtyDaysAgo, now)
+                .maxByOrNull { it.time }
+                ?.weight?.inKilograms
+
+            // Last night's sleep: look for sessions ending today
+            val yesterdayEvening = startOfDay.minusSeconds(12 * 60 * 60)
+            val sleepHours = healthConnectDataSource.readRecords(SleepSessionRecord::class, yesterdayEvening, now)
+                .maxByOrNull { it.endTime }
+                ?.let { session ->
+                    val durationMs = session.endTime.toEpochMilli() - session.startTime.toEpochMilli()
+                    durationMs / 3_600_000.0
+                }
+
+            // Resting heart rate — latest today
+            val restingHr = healthConnectDataSource.readRecords(RestingHeartRateRecord::class, startOfDay, now)
+                .maxByOrNull { it.time }
+                ?.beatsPerMinute?.toInt()
+
+            // Latest heart rate reading today
+            val latestHr = healthConnectDataSource.readRecords(HeartRateRecord::class, startOfDay, now)
                 .flatMap { it.samples }
                 .maxByOrNull { it.time }
-                ?: return HeartRateResult.NoData
+                ?.beatsPerMinute?.toInt()
 
-            val reading = HeartRateReadingSync(
-                timestamp = latestSample.time.toString(),
-                beatsPerMinute = latestSample.beatsPerMinute.toInt()
-            )
+            // SpO2 — latest today
+            val spO2 = healthConnectDataSource.readRecords(OxygenSaturationRecord::class, startOfDay, now)
+                .maxByOrNull { it.time }
+                ?.percentage?.value?.toInt()
 
-            gymDashApi.syncHealthData(
-                token,
-                HealthSyncRequest(
-                    deviceName = Build.MODEL,
-                    heartRateReadings = listOf(reading)
+            // HRV — latest today
+            val hrv = healthConnectDataSource.readRecords(HeartRateVariabilityRmssdRecord::class, startOfDay, now)
+                .maxByOrNull { it.time }
+                ?.heartRateVariabilityMillis
+
+            // Respiratory rate — latest today
+            val respRate = healthConnectDataSource.readRecords(RespiratoryRateRecord::class, startOfDay, now)
+                .maxByOrNull { it.time }
+                ?.rate
+
+            // Blood pressure — latest today
+            val bp = healthConnectDataSource.readRecords(BloodPressureRecord::class, startOfDay, now)
+                .maxByOrNull { it.time }
+
+            // Body temperature — latest today
+            val bodyTemp = healthConnectDataSource.readRecords(BodyTemperatureRecord::class, startOfDay, now)
+                .maxByOrNull { it.time }
+                ?.temperature?.inCelsius
+
+            // VO2 Max — latest in last 30 days
+            val vo2Max = healthConnectDataSource.readRecords(Vo2MaxRecord::class, thirtyDaysAgo, now)
+                .maxByOrNull { it.time }
+                ?.vo2MillilitersPerMinuteKilogram
+
+            // Blood glucose — latest today
+            val glucose = healthConnectDataSource.readRecords(BloodGlucoseRecord::class, startOfDay, now)
+                .maxByOrNull { it.time }
+                ?.level?.inMillimolesPerLiter
+
+            TodaySummaryResult.Success(
+                TodaySummary(
+                    steps = steps,
+                    distanceKm = distanceKm,
+                    activeCalories = activeCalories,
+                    floorsClimbed = floors,
+                    weightKg = weightKg,
+                    sleepHours = sleepHours,
+                    restingHeartRate = restingHr,
+                    latestHeartRate = latestHr,
+                    spO2Percent = spO2,
+                    hrvMs = hrv,
+                    respiratoryRate = respRate,
+                    bloodPressureSystolic = bp?.systolic?.inMillimetersOfMercury?.toInt(),
+                    bloodPressureDiastolic = bp?.diastolic?.inMillimetersOfMercury?.toInt(),
+                    bodyTempCelsius = bodyTemp,
+                    vo2Max = vo2Max,
+                    bloodGlucoseMmolL = glucose
                 )
             )
-
-            HeartRateResult.Success(
-                bpm = reading.beatsPerMinute,
-                timestamp = reading.timestamp
-            )
         } catch (e: Exception) {
-            HeartRateResult.Error(e.message ?: "Unknown error")
+            TodaySummaryResult.Error(e.message ?: "Failed to read today's summary")
         }
     }
 

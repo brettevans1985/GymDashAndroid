@@ -27,16 +27,14 @@ import com.gymdash.companion.data.mapper.MappedHealthData
 import com.gymdash.companion.domain.model.HealthMetric
 import com.gymdash.companion.domain.model.SyncErrorType
 import com.gymdash.companion.domain.model.SyncResult
-import com.gymdash.companion.domain.repository.HeartRateResult
 import com.gymdash.companion.domain.repository.HealthRepository
 import com.gymdash.companion.domain.repository.ReadResult
+import com.gymdash.companion.domain.repository.TodaySummary
+import com.gymdash.companion.domain.repository.TodaySummaryResult
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -63,11 +61,10 @@ data class HomeUiState(
     val isError: Boolean = false,
     val hasHealthPermissions: Boolean = false,
     val needsPermissionRequest: Boolean = false,
-    val isLiveHeartRateActive: Boolean = false,
-    val currentHeartRate: Int? = null,
-    val heartRateStatus: String? = null,
     val isHealthConnectAvailable: Boolean = true,
-    val syncPreview: SyncPreviewState = SyncPreviewState.Hidden
+    val syncPreview: SyncPreviewState = SyncPreviewState.Hidden,
+    val todaySummary: TodaySummary? = null,
+    val isSummaryLoading: Boolean = false
 )
 
 @HiltViewModel
@@ -78,8 +75,6 @@ class HomeViewModel @Inject constructor(
 ) : ViewModel() {
 
     companion object {
-        private const val HEART_RATE_POLL_INTERVAL_MS = 10_000L
-
         val HEALTH_PERMISSIONS = setOf(
             HealthPermission.getReadPermission(StepsRecord::class),
             HealthPermission.getReadPermission(HeartRateRecord::class),
@@ -106,7 +101,6 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     private val formatter = DateTimeFormatter.ofPattern("MMM dd, HH:mm")
-    private var heartRateJob: Job? = null
 
     init {
         val isAvailable = healthConnectClient != null
@@ -115,6 +109,7 @@ class HomeViewModel @Inject constructor(
         if (isAvailable) {
             viewModelScope.launch {
                 checkPermissions()
+                loadTodaySummary()
             }
         }
         viewModelScope.launch {
@@ -140,6 +135,23 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             checkPermissions()
             _uiState.value = _uiState.value.copy(needsPermissionRequest = false)
+            loadTodaySummary()
+        }
+    }
+
+    private suspend fun loadTodaySummary() {
+        if (!_uiState.value.hasHealthPermissions) return
+        _uiState.value = _uiState.value.copy(isSummaryLoading = true)
+        when (val result = healthRepository.readTodaySummary()) {
+            is TodaySummaryResult.Success -> {
+                _uiState.value = _uiState.value.copy(
+                    todaySummary = result.summary,
+                    isSummaryLoading = false
+                )
+            }
+            is TodaySummaryResult.Error -> {
+                _uiState.value = _uiState.value.copy(isSummaryLoading = false)
+            }
         }
     }
 
@@ -225,6 +237,7 @@ class HomeViewModel @Inject constructor(
                         syncPreview = SyncPreviewState.Hidden,
                         lastSyncResult = "${result.recordsCreated} created, ${result.recordsUpdated} updated"
                     )
+                    loadTodaySummary()
                 }
                 is SyncResult.Error -> {
                     _uiState.value = _uiState.value.copy(
@@ -249,63 +262,5 @@ class HomeViewModel @Inject constructor(
             SyncErrorType.HEALTH_CONNECT -> "Health Connect permission denied. Please grant permissions."
             SyncErrorType.UNKNOWN -> fallback
         }
-    }
-
-    fun toggleLiveHeartRate() {
-        if (_uiState.value.isLiveHeartRateActive) {
-            stopHeartRatePolling()
-        } else {
-            if (!_uiState.value.isHealthConnectAvailable) return
-            if (!_uiState.value.hasHealthPermissions) {
-                _uiState.value = _uiState.value.copy(needsPermissionRequest = true)
-                return
-            }
-            startHeartRatePolling()
-        }
-    }
-
-    private fun startHeartRatePolling() {
-        _uiState.value = _uiState.value.copy(
-            isLiveHeartRateActive = true,
-            heartRateStatus = "Starting..."
-        )
-        heartRateJob = viewModelScope.launch {
-            while (isActive) {
-                when (val result = healthRepository.sendLatestHeartRate()) {
-                    is HeartRateResult.Success -> {
-                        _uiState.value = _uiState.value.copy(
-                            currentHeartRate = result.bpm,
-                            heartRateStatus = "Live"
-                        )
-                    }
-                    is HeartRateResult.NoData -> {
-                        _uiState.value = _uiState.value.copy(
-                            heartRateStatus = "Waiting for data..."
-                        )
-                    }
-                    is HeartRateResult.Error -> {
-                        _uiState.value = _uiState.value.copy(
-                            heartRateStatus = result.message
-                        )
-                    }
-                }
-                delay(HEART_RATE_POLL_INTERVAL_MS)
-            }
-        }
-    }
-
-    private fun stopHeartRatePolling() {
-        heartRateJob?.cancel()
-        heartRateJob = null
-        _uiState.value = _uiState.value.copy(
-            isLiveHeartRateActive = false,
-            currentHeartRate = null,
-            heartRateStatus = null
-        )
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        heartRateJob?.cancel()
     }
 }

@@ -61,7 +61,7 @@ fun FoodDiaryScreen(
                     onClick = { onNavigateToBuilder(dateString) },
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer
                 ) {
-                    Text("Build", modifier = Modifier.padding(horizontal = 8.dp))
+                    Text("Recipe", modifier = Modifier.padding(horizontal = 8.dp))
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 SmallFloatingActionButton(
@@ -72,7 +72,7 @@ fun FoodDiaryScreen(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 FloatingActionButton(onClick = { onNavigateToScanner(dateString) }) {
-                    Icon(Icons.Default.Add, contentDescription = "Scan Food")
+                    Text("Scan", modifier = Modifier.padding(horizontal = 12.dp))
                 }
             }
         }

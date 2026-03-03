@@ -10,18 +10,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -43,6 +41,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gymdash.companion.R
 import com.gymdash.companion.domain.model.HealthMetric
+import com.gymdash.companion.domain.repository.TodaySummary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -297,78 +296,11 @@ fun HomeScreen(
                 }
             }
 
-            // Live Heart Rate Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (uiState.isLiveHeartRateActive)
-                        MaterialTheme.colorScheme.primaryContainer
-                    else
-                        MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.Favorite,
-                                contentDescription = null,
-                                tint = if (uiState.isLiveHeartRateActive)
-                                    MaterialTheme.colorScheme.error
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Live Heart Rate",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                        }
-                        if (uiState.heartRateStatus != null) {
-                            Text(
-                                text = uiState.heartRateStatus!!,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    if (uiState.currentHeartRate != null) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            verticalAlignment = Alignment.Bottom
-                        ) {
-                            Text(
-                                text = "${uiState.currentHeartRate}",
-                                style = MaterialTheme.typography.displayMedium,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "BPM",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    OutlinedButton(
-                        onClick = viewModel::toggleLiveHeartRate,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            if (uiState.isLiveHeartRateActive) "Stop Live HR" else "Start Live HR"
-                        )
-                    }
-                }
-            }
+            // Today's Summary Card
+            TodaySummaryCard(
+                summary = uiState.todaySummary,
+                isLoading = uiState.isSummaryLoading
+            )
 
             // Sync Status Card
             Card(modifier = Modifier.fillMaxWidth()) {
@@ -409,5 +341,112 @@ fun HomeScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TodaySummaryCard(
+    summary: TodaySummary?,
+    isLoading: Boolean
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Today's Summary",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                }
+            } else if (summary == null) {
+                Text(
+                    text = "No data available",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                val tiles = buildSummaryTiles(summary)
+                if (tiles.isEmpty()) {
+                    Text(
+                        text = "No data recorded today",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    tiles.chunked(3).forEach { row ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            row.forEach { (value, label) ->
+                                SummaryTile(
+                                    value = value,
+                                    label = label,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            // Fill remaining weight if row has fewer than 3 items
+                            repeat(3 - row.size) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun buildSummaryTiles(summary: TodaySummary): List<Pair<String, String>> {
+    return buildList {
+        summary.steps?.let { add("%,d".format(it) to "Steps") }
+        summary.distanceKm?.let { add("%.1f".format(it) to "Distance (km)") }
+        summary.activeCalories?.let { add("%,.0f".format(it) to "Active Cal") }
+        summary.floorsClimbed?.let { add("%.0f".format(it) to "Floors") }
+        summary.sleepHours?.let { add("%.1f".format(it) to "Sleep (hrs)") }
+        summary.restingHeartRate?.let { add("$it" to "Resting HR") }
+        summary.latestHeartRate?.let { add("$it" to "Heart Rate") }
+        summary.weightKg?.let { add("%.1f".format(it) to "Weight (kg)") }
+        summary.spO2Percent?.let { add("$it%%" to "SpO2") }
+        summary.hrvMs?.let { add("%.0f".format(it) to "HRV (ms)") }
+        summary.respiratoryRate?.let { add("%.0f".format(it) to "Resp Rate") }
+        if (summary.bloodPressureSystolic != null && summary.bloodPressureDiastolic != null) {
+            add("${summary.bloodPressureSystolic}/${summary.bloodPressureDiastolic}" to "BP (mmHg)")
+        }
+        summary.bodyTempCelsius?.let { add("%.1f".format(it) to "Temp (\u00B0C)") }
+        summary.vo2Max?.let { add("%.1f".format(it) to "VO2 Max") }
+        summary.bloodGlucoseMmolL?.let { add("%.1f".format(it) to "Glucose") }
+    }
+}
+
+@Composable
+private fun SummaryTile(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
