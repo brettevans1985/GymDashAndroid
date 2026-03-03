@@ -3,6 +3,7 @@ package com.gymdash.companion.data.remote.api
 import com.gymdash.companion.data.remote.dto.CreateBuilderEntriesRequest
 import com.gymdash.companion.data.remote.dto.CreateFoodDiaryEntryRequest
 import com.gymdash.companion.data.remote.dto.CreateRecipeRequest
+import com.gymdash.companion.data.remote.dto.FoodDiaryResponse
 import com.gymdash.companion.data.remote.dto.FoodLookupResponse
 import com.gymdash.companion.data.remote.dto.FoodSearchResponse
 import com.gymdash.companion.data.remote.dto.RecipeDto
@@ -16,6 +17,25 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface FoodDiaryApi {
+
+    @GET("food-diary")
+    suspend fun getDiary(
+        @Header("Authorization") token: String,
+        @Query("date") date: String
+    ): FoodDiaryResponse
+
+    @DELETE("food-diary/{id}")
+    suspend fun deleteEntry(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    )
+
+    @PUT("food-diary/{id}")
+    suspend fun updateEntry(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int,
+        @Body updates: Map<String, @JvmSuppressWildcards Any>
+    )
 
     @GET("food/lookup/{barcode}")
     suspend fun lookupBarcode(

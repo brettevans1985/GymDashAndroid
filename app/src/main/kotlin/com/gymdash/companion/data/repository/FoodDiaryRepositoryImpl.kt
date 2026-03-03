@@ -5,6 +5,7 @@ import com.gymdash.companion.data.remote.api.FoodDiaryApi
 import com.gymdash.companion.data.remote.dto.CreateBuilderEntriesRequest
 import com.gymdash.companion.data.remote.dto.CreateFoodDiaryEntryRequest
 import com.gymdash.companion.data.remote.dto.CreateRecipeRequest
+import com.gymdash.companion.data.remote.dto.FoodDiaryResponse
 import com.gymdash.companion.data.remote.dto.FoodLookupResponse
 import com.gymdash.companion.data.remote.dto.RecipeDto
 import com.gymdash.companion.domain.repository.FoodDiaryRepository
@@ -16,6 +17,27 @@ class FoodDiaryRepositoryImpl @Inject constructor(
     private val foodDiaryApi: FoodDiaryApi,
     private val preferences: SyncPreferences
 ) : FoodDiaryRepository {
+
+    override suspend fun getDiary(date: String): FoodDiaryResponse {
+        val token = preferences.authToken.first()
+            ?: throw IllegalStateException("Not authenticated")
+
+        return foodDiaryApi.getDiary(token, date)
+    }
+
+    override suspend fun deleteEntry(id: Int) {
+        val token = preferences.authToken.first()
+            ?: throw IllegalStateException("Not authenticated")
+
+        foodDiaryApi.deleteEntry(token, id)
+    }
+
+    override suspend fun updateEntry(id: Int, updates: Map<String, Any>) {
+        val token = preferences.authToken.first()
+            ?: throw IllegalStateException("Not authenticated")
+
+        foodDiaryApi.updateEntry(token, id, updates)
+    }
 
     override suspend fun lookupBarcode(barcode: String): FoodLookupResponse? {
         val token = preferences.authToken.first()

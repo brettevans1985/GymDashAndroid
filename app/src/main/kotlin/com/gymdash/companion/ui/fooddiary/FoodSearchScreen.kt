@@ -17,13 +17,12 @@ import com.gymdash.companion.data.remote.dto.CreateFoodDiaryEntryRequest
 import com.gymdash.companion.data.remote.dto.FoodLookupResponse
 import com.gymdash.companion.domain.repository.FoodDiaryRepository
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FoodSearchScreen(
     repository: FoodDiaryRepository,
+    date: String,
     onNavigateBack: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -190,7 +189,7 @@ fun FoodSearchScreen(
                                     repository.createEntry(
                                         CreateFoodDiaryEntryRequest(
                                             foodProductId = p.id,
-                                            calendarDate = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
+                                            calendarDate = date,
                                             mealCategory = selectedMeal,
                                             quantity = qty,
                                             productName = p.name,

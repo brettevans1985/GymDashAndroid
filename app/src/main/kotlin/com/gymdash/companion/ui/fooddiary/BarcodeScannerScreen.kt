@@ -29,8 +29,6 @@ import com.gymdash.companion.data.remote.dto.CreateFoodDiaryEntryRequest
 import com.gymdash.companion.data.remote.dto.FoodLookupResponse
 import com.gymdash.companion.domain.repository.FoodDiaryRepository
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import java.util.concurrent.Executors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -242,6 +240,7 @@ fun BarcodeScannerForBuilderScreen(
 @Composable
 fun BarcodeScannerScreen(
     repository: FoodDiaryRepository,
+    date: String,
     onNavigateBack: () -> Unit,
     onNavigateToSearch: () -> Unit
 ) {
@@ -559,7 +558,7 @@ fun BarcodeScannerScreen(
                                     repository.createEntry(
                                         CreateFoodDiaryEntryRequest(
                                             foodProductId = p.id,
-                                            calendarDate = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
+                                            calendarDate = date,
                                             mealCategory = selectedMeal,
                                             quantity = qty,
                                             productName = p.name,

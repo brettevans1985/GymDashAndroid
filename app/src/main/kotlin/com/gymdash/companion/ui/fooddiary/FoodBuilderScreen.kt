@@ -18,8 +18,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 private enum class MeasurementType(val label: String) {
     POWDER("Powder"),
@@ -57,6 +55,7 @@ private fun presetsFor(type: MeasurementType): List<MeasurementPreset> = when (t
 @Composable
 fun FoodBuilderScreen(
     viewModel: FoodBuilderViewModel,
+    date: String,
     onNavigateBack: () -> Unit,
     onNavigateToScanner: () -> Unit = {}
 ) {
@@ -317,7 +316,7 @@ fun FoodBuilderScreen(
                 Button(
                     onClick = {
                         viewModel.saveToDiary(
-                            date = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
+                            date = date,
                             onSuccess = onNavigateBack
                         )
                     },

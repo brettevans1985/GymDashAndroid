@@ -19,10 +19,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.gymdash.companion.presentation.history.SyncHistoryScreen
 import com.gymdash.companion.presentation.home.HomeScreen
 import com.gymdash.companion.presentation.login.LoginScreen
@@ -42,10 +44,14 @@ object Routes {
     const val SETTINGS = "settings"
     const val HISTORY = "history"
     const val FOOD_DIARY = "food_diary"
-    const val FOOD_SCANNER = "food_scanner"
-    const val FOOD_SEARCH = "food_search"
-    const val FOOD_BUILDER = "food_builder"
+    const val FOOD_SCANNER = "food_scanner/{date}"
+    const val FOOD_SEARCH = "food_search/{date}"
+    const val FOOD_BUILDER = "food_builder/{date}"
     const val FOOD_BUILDER_SCANNER = "food_builder_scanner"
+
+    fun foodScanner(date: String) = "food_scanner/$date"
+    fun foodSearch(date: String) = "food_search/$date"
+    fun foodBuilder(date: String) = "food_builder/$date"
 }
 
 data class BottomNavItem(
@@ -140,33 +146,75 @@ fun NavGraph(
             composable(Routes.HISTORY) {
                 SyncHistoryScreen()
             }
-            composable(Routes.FOOD_DIARY) {
+            composable(Routes.FOOD_DIARY) { backStackEntry ->
                 val viewModel: FoodDiaryViewModel = hiltViewModel()
                 val waterViewModel: WaterTrackerViewModel = hiltViewModel()
+
+                // Auto-refresh when returning from add screens
+                val entryAdded = backStackEntry.savedStateHandle.get<Boolean>("entry_added")
+                LaunchedEffect(entryAdded) {
+                    if (entryAdded == true) {
+                        viewModel.loadDiary()
+                        backStackEntry.savedStateHandle.remove<Boolean>("entry_added")
+                    }
+                }
+
                 FoodDiaryScreen(
-                    repository = viewModel.repository,
+                    viewModel = viewModel,
                     waterTrackerViewModel = waterViewModel,
-                    onNavigateToScanner = { navController.navigate(Routes.FOOD_SCANNER) },
-                    onNavigateToSearch = { navController.navigate(Routes.FOOD_SEARCH) },
-                    onNavigateToBuilder = { navController.navigate(Routes.FOOD_BUILDER) }
+                    onNavigateToScanner = { date ->
+                        navController.navigate(Routes.foodScanner(date))
+                    },
+                    onNavigateToSearch = { date ->
+                        navController.navigate(Routes.foodSearch(date))
+                    },
+                    onNavigateToBuilder = { date ->
+                        navController.navigate(Routes.foodBuilder(date))
+                    }
                 )
             }
-            composable(Routes.FOOD_SCANNER) {
+            composable(
+                Routes.FOOD_SCANNER,
+                arguments = listOf(navArgument("date") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val date = backStackEntry.arguments?.getString("date") ?: ""
                 val viewModel: FoodDiaryViewModel = hiltViewModel()
                 BarcodeScannerScreen(
                     repository = viewModel.repository,
-                    onNavigateBack = { navController.popBackStack() },
-                    onNavigateToSearch = { navController.navigate(Routes.FOOD_SEARCH) }
+                    date = date,
+                    onNavigateBack = {
+                        navController.previousBackStackEntry
+                            ?.savedStateHandle
+                            ?.set("entry_added", true)
+                        navController.popBackStack()
+                    },
+                    onNavigateToSearch = {
+                        navController.navigate(Routes.foodSearch(date))
+                    }
                 )
             }
-            composable(Routes.FOOD_SEARCH) {
+            composable(
+                Routes.FOOD_SEARCH,
+                arguments = listOf(navArgument("date") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val date = backStackEntry.arguments?.getString("date") ?: ""
                 val viewModel: FoodDiaryViewModel = hiltViewModel()
                 FoodSearchScreen(
                     repository = viewModel.repository,
-                    onNavigateBack = { navController.popBackStack() }
+                    date = date,
+                    onNavigateBack = {
+                        navController.previousBackStackEntry
+                            ?.savedStateHandle
+                            ?.set("entry_added", true)
+                        navController.popBackStack()
+                    }
                 )
             }
-            composable(Routes.FOOD_BUILDER) { backStackEntry ->
+            composable(
+                Routes.FOOD_BUILDER,
+                arguments = listOf(navArgument("date") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val date = backStackEntry.arguments?.getString("date") ?: ""
                 val viewModel: FoodBuilderViewModel = hiltViewModel()
 
                 // Observe barcode returned from builder scanner
@@ -180,7 +228,13 @@ fun NavGraph(
 
                 FoodBuilderScreen(
                     viewModel = viewModel,
-                    onNavigateBack = { navController.popBackStack() },
+                    date = date,
+                    onNavigateBack = {
+                        navController.previousBackStackEntry
+                            ?.savedStateHandle
+                            ?.set("entry_added", true)
+                        navController.popBackStack()
+                    },
                     onNavigateToScanner = { navController.navigate(Routes.FOOD_BUILDER_SCANNER) }
                 )
             }
