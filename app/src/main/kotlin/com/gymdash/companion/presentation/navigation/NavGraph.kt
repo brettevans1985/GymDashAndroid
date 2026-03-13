@@ -28,7 +28,9 @@ import androidx.navigation.navArgument
 import com.gymdash.companion.presentation.history.SyncHistoryScreen
 import com.gymdash.companion.presentation.home.HomeScreen
 import com.gymdash.companion.presentation.login.LoginScreen
+import com.gymdash.companion.data.remote.dto.ThemeColorsDto
 import com.gymdash.companion.presentation.settings.SettingsScreen
+import com.gymdash.companion.presentation.settings.ThemeSettingsScreen
 import com.gymdash.companion.ui.fooddiary.BarcodeScannerForBuilderScreen
 import com.gymdash.companion.ui.fooddiary.BarcodeScannerScreen
 import com.gymdash.companion.ui.fooddiary.FoodBuilderScreen
@@ -48,6 +50,7 @@ object Routes {
     const val FOOD_SEARCH = "food_search/{date}"
     const val FOOD_BUILDER = "food_builder/{date}"
     const val FOOD_BUILDER_SCANNER = "food_builder_scanner"
+    const val THEME_SETTINGS = "theme_settings"
 
     fun foodScanner(date: String) = "food_scanner/$date"
     fun foodSearch(date: String) = "food_search/$date"
@@ -73,7 +76,8 @@ private val bottomNavRoutes = bottomNavItems.map { it.route }.toSet()
 fun NavGraph(
     startDestination: String = Routes.LOGIN,
     forceLoginNavigation: Boolean = false,
-    onForceLoginHandled: () -> Unit = {}
+    onForceLoginHandled: () -> Unit = {},
+    onThemeChanged: (ThemeColorsDto) -> Unit = {}
 ) {
     val navController = rememberNavController()
 
@@ -140,7 +144,16 @@ fun NavGraph(
                         navController.navigate(Routes.LOGIN) {
                             popUpTo(0) { inclusive = true }
                         }
+                    },
+                    onNavigateToThemes = {
+                        navController.navigate(Routes.THEME_SETTINGS)
                     }
+                )
+            }
+            composable(Routes.THEME_SETTINGS) {
+                ThemeSettingsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onThemeChanged = onThemeChanged
                 )
             }
             composable(Routes.HISTORY) {

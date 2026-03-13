@@ -14,6 +14,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -47,6 +48,7 @@ private val intervalOptions = listOf(
 @Composable
 fun SettingsScreen(
     onLogout: () -> Unit,
+    onNavigateToThemes: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -87,6 +89,15 @@ fun SettingsScreen(
                     selectedMinutes = uiState.syncIntervalMinutes,
                     onIntervalChanged = viewModel::onSyncIntervalChanged
                 )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            OutlinedButton(
+                onClick = onNavigateToThemes,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Theme Settings")
             }
 
             Spacer(modifier = Modifier.weight(1f))

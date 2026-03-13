@@ -9,6 +9,7 @@ import com.gymdash.companion.data.remote.BaseUrlInterceptor
 import com.gymdash.companion.data.remote.api.AuthApi
 import com.gymdash.companion.data.remote.api.FoodDiaryApi
 import com.gymdash.companion.data.remote.api.GymDashApi
+import com.gymdash.companion.data.remote.api.ThemeApi
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import dagger.Module
@@ -71,6 +72,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideFoodDiaryApi(retrofit: Retrofit): FoodDiaryApi = retrofit.create(FoodDiaryApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideThemeApi(retrofit: Retrofit): ThemeApi = retrofit.create(ThemeApi::class.java)
 
     @Provides
     @Singleton
