@@ -19,6 +19,7 @@ import com.gymdash.companion.data.remote.dto.CreateFoodDiaryEntryRequest
 import com.gymdash.companion.data.remote.dto.FoodDiaryEntryDto
 import com.gymdash.companion.data.remote.dto.FoodLookupResponse
 import com.gymdash.companion.domain.repository.FoodDiaryRepository
+import android.util.Log
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,8 +52,8 @@ fun FoodSearchScreen(
     LaunchedEffect(Unit) {
         try {
             recentItems = repository.getRecentItems()
-        } catch (_: Exception) {
-            // Silently fail — recent items are a convenience, not critical
+        } catch (e: Exception) {
+            Log.e("FoodSearch", "Failed to load recent items", e)
         }
         isLoadingRecent = false
     }
