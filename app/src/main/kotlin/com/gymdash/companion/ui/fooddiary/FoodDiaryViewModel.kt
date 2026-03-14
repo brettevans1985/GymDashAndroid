@@ -36,7 +36,11 @@ data class FoodDiaryUiState(
     val copyError: String? = null,
     // Edit entry flow
     val entryToEdit: FoodDiaryEntryDto? = null,
-    val isSaving: Boolean = false
+    val isSaving: Boolean = false,
+    // Entry action sheet (Edit / Copy to meal)
+    val entryForAction: FoodDiaryEntryDto? = null,
+    val showCopyToMealPicker: Boolean = false,
+    val isCopyingEntry: Boolean = false
 ) {
     val isToday: Boolean get() = selectedDate == LocalDate.now()
     val canNavigateForward: Boolean get() = selectedDate < LocalDate.now()
@@ -240,6 +244,74 @@ class FoodDiaryViewModel @Inject constructor(
                 _uiState.update { it.copy(
                     copyError = "Failed to copy entries: ${e.message}",
                     isCopying = false
+                ) }
+            }
+        }
+    }
+
+    // Entry action sheet flow (tap on entry card)
+    fun showEntryActions(entry: FoodDiaryEntryDto) {
+        _uiState.update { it.copy(entryForAction = entry) }
+    }
+
+    fun dismissEntryActions() {
+        _uiState.update { it.copy(entryForAction = null) }
+    }
+
+    fun editFromActions() {
+        val entry = _uiState.value.entryForAction ?: return
+        _uiState.update { it.copy(entryForAction = null, entryToEdit = entry) }
+    }
+
+    fun showCopyToMeal() {
+        _uiState.update { it.copy(showCopyToMealPicker = true) }
+    }
+
+    fun dismissCopyToMeal() {
+        _uiState.update { it.copy(showCopyToMealPicker = false, entryForAction = null) }
+    }
+
+    fun copyEntryToMeal(targetMeal: Int) {
+        val entry = _uiState.value.entryForAction ?: return
+        val targetDate = _uiState.value.selectedDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        _uiState.update { it.copy(isCopyingEntry = true) }
+        viewModelScope.launch {
+            try {
+                repository.createEntry(
+                    CreateFoodDiaryEntryRequest(
+                        foodProductId = null,
+                        calendarDate = targetDate,
+                        mealCategory = targetMeal,
+                        quantity = entry.quantity,
+                        productName = entry.productName,
+                        barcode = entry.barcode,
+                        servingSize = entry.servingSize,
+                        servingUnit = entry.servingUnit,
+                        caloriesPerServing = entry.caloriesPerServing,
+                        proteinPerServing = entry.proteinPerServing,
+                        carbsPerServing = entry.carbsPerServing,
+                        fatPerServing = entry.fatPerServing,
+                        fibrePerServing = entry.fibrePerServing,
+                        saltPerServing = entry.saltPerServing,
+                        entrySource = when (entry.entrySource) {
+                            "BarcodeScan" -> 0
+                            "ManualSearch" -> 1
+                            else -> 1
+                        }
+                    )
+                )
+                _uiState.update { it.copy(
+                    isCopyingEntry = false,
+                    showCopyToMealPicker = false,
+                    entryForAction = null
+                ) }
+                loadDiary()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    error = "Failed to copy: ${e.message}",
+                    isCopyingEntry = false,
+                    showCopyToMealPicker = false,
+                    entryForAction = null
                 ) }
             }
         }

@@ -3,6 +3,7 @@ package com.gymdash.companion.data.remote.api
 import com.gymdash.companion.data.remote.dto.CreateBuilderEntriesRequest
 import com.gymdash.companion.data.remote.dto.CreateFoodDiaryEntryRequest
 import com.gymdash.companion.data.remote.dto.CreateRecipeRequest
+import com.gymdash.companion.data.remote.dto.FoodDiaryEntryDto
 import com.gymdash.companion.data.remote.dto.FoodDiaryResponse
 import com.gymdash.companion.data.remote.dto.FoodLookupResponse
 import com.gymdash.companion.data.remote.dto.FoodSearchResponse
@@ -17,6 +18,12 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface FoodDiaryApi {
+
+    @GET("food-diary/recent")
+    suspend fun getRecentItems(
+        @Header("Authorization") token: String,
+        @Query("limit") limit: Int = 20
+    ): List<FoodDiaryEntryDto>
 
     @GET("food-diary")
     suspend fun getDiary(

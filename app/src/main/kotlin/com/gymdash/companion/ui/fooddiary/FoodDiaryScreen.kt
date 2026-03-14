@@ -160,7 +160,7 @@ fun FoodDiaryScreen(
                         SwipeToDeleteEntryCard(
                             entry = entry,
                             onDelete = { viewModel.requestDelete(entry) },
-                            onTap = { viewModel.requestEdit(entry) }
+                            onTap = { viewModel.showEntryActions(entry) }
                         )
                     }
                 }
@@ -212,6 +212,78 @@ fun FoodDiaryScreen(
             isSaving = state.isSaving,
             onSave = { updates -> viewModel.saveEdit(updates) },
             onDismiss = { viewModel.dismissEdit() }
+        )
+    }
+
+    // Entry action sheet (Edit / Copy to meal)
+    if (state.entryForAction != null && !state.showCopyToMealPicker) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissEntryActions() },
+            title = {
+                Text(
+                    state.entryForAction!!.productName,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            text = {
+                Column {
+                    TextButton(
+                        onClick = { viewModel.editFromActions() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Edit entry")
+                    }
+                    TextButton(
+                        onClick = { viewModel.showCopyToMeal() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Copy to meal...")
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissEntryActions() }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Copy to meal picker
+    if (state.showCopyToMealPicker && state.entryForAction != null) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissCopyToMeal() },
+            title = { Text("Copy to meal") },
+            text = {
+                Column {
+                    val meals = listOf(0 to "Breakfast", 1 to "Lunch", 2 to "Dinner", 3 to "Snack")
+                    meals.forEach { (index, name) ->
+                        TextButton(
+                            onClick = { viewModel.copyEntryToMeal(index) },
+                            enabled = !state.isCopyingEntry,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(name)
+                        }
+                    }
+                    if (state.isCopyingEntry) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .align(Alignment.CenterHorizontally)
+                                .padding(top = 8.dp)
+                                .size(24.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissCopyToMeal() }) {
+                    Text("Cancel")
+                }
+            }
         )
     }
 

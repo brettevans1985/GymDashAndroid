@@ -10,10 +10,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gymdash.companion.data.remote.dto.CreateFoodDiaryEntryRequest
+import com.gymdash.companion.data.remote.dto.FoodDiaryEntryDto
 import com.gymdash.companion.data.remote.dto.FoodLookupResponse
 import com.gymdash.companion.domain.repository.FoodDiaryRepository
 import kotlinx.coroutines.launch
@@ -29,12 +32,30 @@ fun FoodSearchScreen(
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<FoodLookupResponse>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
+    var hasSearched by remember { mutableStateOf(false) }
     var selectedProduct by remember { mutableStateOf<FoodLookupResponse?>(null) }
     var quantity by remember { mutableStateOf("1.0") }
     var selectedMeal by remember { mutableIntStateOf(0) }
     var isAdding by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val mealNames = listOf("Breakfast", "Lunch", "Dinner", "Snack")
+
+    // Recent items state
+    var recentItems by remember { mutableStateOf<List<FoodDiaryEntryDto>>(emptyList()) }
+    var isLoadingRecent by remember { mutableStateOf(true) }
+
+    // Selected recent item (for add-to-diary form)
+    var selectedRecent by remember { mutableStateOf<FoodDiaryEntryDto?>(null) }
+
+    // Load recent items on first composition
+    LaunchedEffect(Unit) {
+        try {
+            recentItems = repository.getRecentItems()
+        } catch (_: Exception) {
+            // Silently fail — recent items are a convenience, not critical
+        }
+        isLoadingRecent = false
+    }
 
     Scaffold(
         topBar = {
@@ -54,7 +75,7 @@ fun FoodSearchScreen(
                 .padding(16.dp)
                 .fillMaxSize()
         ) {
-            if (selectedProduct == null) {
+            if (selectedProduct == null && selectedRecent == null) {
                 // Search input
                 OutlinedTextField(
                     value = query,
@@ -65,6 +86,7 @@ fun FoodSearchScreen(
                         onSearch = {
                             if (query.length >= 3) {
                                 isSearching = true
+                                hasSearched = true
                                 errorMessage = null
                                 scope.launch {
                                     try {
@@ -86,6 +108,7 @@ fun FoodSearchScreen(
                     onClick = {
                         if (query.length >= 3) {
                             isSearching = true
+                            hasSearched = true
                             errorMessage = null
                             scope.launch {
                                 try {
@@ -111,9 +134,10 @@ fun FoodSearchScreen(
 
                 if (isSearching) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-                } else if (results.isEmpty() && query.length >= 3) {
+                } else if (hasSearched && results.isEmpty()) {
                     Text("No results found", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else {
+                } else if (hasSearched) {
+                    // Search results
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         items(results) { product ->
                             Card(
@@ -135,9 +159,132 @@ fun FoodSearchScreen(
                             }
                         }
                     }
+                } else {
+                    // Show recent items when no search has been performed
+                    if (isLoadingRecent) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                    } else if (recentItems.isNotEmpty()) {
+                        Text(
+                            "Recently Used",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            items(recentItems) { entry ->
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            selectedRecent = entry
+                                            quantity = "1.0"
+                                            selectedMeal = 0
+                                        }
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Text(
+                                            entry.productName,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            "%.0f kcal | P: %.1fg | C: %.1fg | F: %.1fg".format(
+                                                entry.caloriesPerServing,
+                                                entry.proteinPerServing,
+                                                entry.carbsPerServing,
+                                                entry.fatPerServing
+                                            ),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (selectedRecent != null) {
+                // Add entry form for recent item
+                val r = selectedRecent!!
+                Text(r.productName, style = MaterialTheme.typography.headlineSmall)
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = quantity,
+                    onValueChange = { quantity = it },
+                    label = { Text("Quantity (servings)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text("Meal", style = MaterialTheme.typography.labelLarge)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    mealNames.forEachIndexed { index, name ->
+                        FilterChip(
+                            selected = selectedMeal == index,
+                            onClick = { selectedMeal = index },
+                            label = { Text(name) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = { selectedRecent = null },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Back")
+                    }
+                    Button(
+                        onClick = {
+                            val qty = quantity.toDoubleOrNull() ?: 1.0
+                            isAdding = true
+                            scope.launch {
+                                try {
+                                    repository.createEntry(
+                                        CreateFoodDiaryEntryRequest(
+                                            foodProductId = null,
+                                            calendarDate = date,
+                                            mealCategory = selectedMeal,
+                                            quantity = qty,
+                                            productName = r.productName,
+                                            barcode = r.barcode,
+                                            servingSize = r.servingSize,
+                                            servingUnit = r.servingUnit,
+                                            caloriesPerServing = r.caloriesPerServing,
+                                            proteinPerServing = r.proteinPerServing,
+                                            carbsPerServing = r.carbsPerServing,
+                                            fatPerServing = r.fatPerServing,
+                                            fibrePerServing = r.fibrePerServing,
+                                            saltPerServing = r.saltPerServing,
+                                            entrySource = 1  // ManualSearch
+                                        )
+                                    )
+                                    onNavigateBack()
+                                } catch (e: Exception) {
+                                    errorMessage = "Failed to add: ${e.message}"
+                                }
+                                isAdding = false
+                            }
+                        },
+                        enabled = !isAdding,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(if (isAdding) "Adding..." else "Add to Diary")
+                    }
                 }
             } else {
-                // Add entry form
+                // Add entry form for search result
                 val p = selectedProduct!!
                 Text(p.name, style = MaterialTheme.typography.headlineSmall)
                 if (p.brand != null) {

@@ -5,6 +5,7 @@ import com.gymdash.companion.data.remote.api.FoodDiaryApi
 import com.gymdash.companion.data.remote.dto.CreateBuilderEntriesRequest
 import com.gymdash.companion.data.remote.dto.CreateFoodDiaryEntryRequest
 import com.gymdash.companion.data.remote.dto.CreateRecipeRequest
+import com.gymdash.companion.data.remote.dto.FoodDiaryEntryDto
 import com.gymdash.companion.data.remote.dto.FoodDiaryResponse
 import com.gymdash.companion.data.remote.dto.FoodLookupResponse
 import com.gymdash.companion.data.remote.dto.RecipeDto
@@ -17,6 +18,13 @@ class FoodDiaryRepositoryImpl @Inject constructor(
     private val foodDiaryApi: FoodDiaryApi,
     private val preferences: SyncPreferences
 ) : FoodDiaryRepository {
+
+    override suspend fun getRecentItems(limit: Int): List<FoodDiaryEntryDto> {
+        val token = preferences.authToken.first()
+            ?: throw IllegalStateException("Not authenticated")
+
+        return foodDiaryApi.getRecentItems(token, limit)
+    }
 
     override suspend fun getDiary(date: String): FoodDiaryResponse {
         val token = preferences.authToken.first()
